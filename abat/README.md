@@ -7,6 +7,7 @@
 
 A command-line tool for fetching, cropping and resizing box art for Atari 2600, 5200 and 7800 cartridges for use in the main menu of the Atari Gamestation Pro.
 
+'''
 Usage: abat.py [OPTIONS] COMMAND [ARGS]...
 
   "Atari Gamestation Pro" (AGP) Box Art Tool (ABAT).
@@ -26,3 +27,4 @@ Commands:
   crop    Crops a front or back cover from the specified box art image.
   fetch   Fetches box art from "The Cover Project" for the specified game.
   resize  Resizes a cover image to the standard size for the AGP.
+'''
