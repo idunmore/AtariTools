@@ -97,9 +97,8 @@ def partition(copy: bool, delete:bool, group: bool, max_files: int,
 	file_groups = grouper.filegroups
 	if file_groups == None or len(file_groups) < 1:
 		echo_v('No files groups to partition.', verbosity)
-		return SUCCESS
+		return SUCCESS	
 
-	
 	return 0
 
 
@@ -147,7 +146,7 @@ class FileGroup(list):
 # entire set of files to be processed.
 class FileGroups(list):
 	
-	def get_folder_name(self: Self, filegroup: FileGroup) -> (str, str):
+	def get_folder_range(self: Self, filegroup: FileGroup) -> (str, str):
 		# Find the PRIOR FileGroup
 		index = self.index(filegroup)
 		prior_filegroup = self[index - 1] if index > 0 else None
@@ -170,7 +169,19 @@ class FileGroups(list):
 				if start_prefix_length > 1:
 					if (prior_filegroup.get_n_last_prefix_chars(1) !=
 						filegroup.get_n_first_prefix_chars(1)):
-						 start_prefix_length -= 1				
+						 start_prefix_length -= 1
+
+		# If there is a NEXT filegroup ...
+		if len(self) > index + 1:
+			next_filegroup = self[index + 1]
+			# ... we may need to shorten the END prefix, if it starts a whole
+			# new letter, and is shorter than the START prefix ...			
+			if (filegroup.get_n_last_prefix_chars(1) !=
+				next_filegroup.get_n_first_prefix_chars(1)):
+					if end_prefix_length < start_prefix_length:
+						# Can't be less then ONE character
+						if end_prefix_length > 1: end_prefix_length -= 1			
+
 
 		return (filegroup[0].name[0:start_prefix_length],
 				filegroup[len(filegroup) - 1].name[0:end_prefix_length] )
@@ -185,9 +196,6 @@ class MaxFilesPerFolder(list):
 		):
 		# Initialize our underlying LIST
 		list.__init__(self, path_list)
-
-		print(preserve_grouping)
-		input()
 
 		# Handle additional arguments.
 		if max_files_per_folder < DEFAULT_MIN_FILES_PER_FOLDER:
