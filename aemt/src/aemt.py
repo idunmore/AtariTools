@@ -31,7 +31,7 @@ DEFAULT_MIN_FILES_PER_FOLDER = 1
 DEFAULT_PRESERVE_GROUPING = False
 
 # File and Path Patterns
-SOURCE_FILE_PATTERN = "**/*.exe"
+SOURCE_FILE_PATTERN = '**/*.*'
 
 # Command Line Interface
 
@@ -98,6 +98,17 @@ def partition(copy: bool, delete:bool, group: bool, max_files: int,
 	if file_groups == None or len(file_groups) < 1:
 		echo_v('No files groups to partition.', verbosity)
 		return SUCCESS	
+
+	## TEST CODE ##
+	for g in file_groups:
+		print(f'\n{g.first_prefix} -> {g.last_prefix} : {len(g)}')
+		s, e = file_groups.get_folder_range(g)
+		print(f'{s} -> {e} : {len(g)}\n')
+		
+		for x in g:
+			print(f'  {x.name}')
+
+	## TEST CODE ##
 
 	return 0
 
@@ -181,7 +192,6 @@ class FileGroups(list):
 					if end_prefix_length < start_prefix_length:
 						# Can't be less then ONE character
 						if end_prefix_length > 1: end_prefix_length -= 1			
-
 
 		return (filegroup[0].name[0:start_prefix_length],
 				filegroup[len(filegroup) - 1].name[0:end_prefix_length] )
