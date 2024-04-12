@@ -1,0 +1,70 @@
+Usage:
+
+  split - (was "partition")
+
+  Options:
+
+  	-s, --scheme 	[simple | max_files | bands]
+  	-f, --force 	flag - forces max files per folder, turning off "grouping"
+  	-v, --verbose  [silent | progress | log], or just 0-2
+
+<--[ CLI STRUCTURE ]-->
+
+# Commands: #
+
+	? Does it make sense to have seperate commands, with dedicated options,
+	  for each of the different splitting "schemes"?
+	  	 
+		 - This would be instead of using a "--scheme" option:
+
+		 	Instead of:
+			  
+			  amet.py split --scheme [simple|max|bands]
+
+			It would be:
+
+			  amet.py split ...
+			  amet.py partition ...
+			  amet.py band ...
+
+		- Would allow each "scheme" to have its own, non-colliding, OPTIONS:
+
+			* amet.py split (NO UNIQUE OPTIONS)
+			* amet.py partition -g -max_files 50
+			* amet.py bands -b "0-9,A-E,F-Z"
+
+<--[ TODOS ]-->
+
+- TODO: Remove FileGroup + FileGroups - once the MaxFilesSplitter is DONE.
+
+<--[ DESIGN & BEHAVIOR NOTEPAD ]-->
+
+# Class Structures: #
+
+	Folder = One Folder
+
+		? Should it be able to create its own folder name based on its content?
+		? Should it be given a name by the Splitter?
+
+	Folders = All Folders (Collection of Folder)
+
+		* This is just a representation/container.
+		! It is created by the Splitter.
+	 
+# Splitters #
+
+  * [DONE] Simple by Folder (0-9, A, B, C ...)
+
+  * Max Files per Folder (dynamic folder names, 0-9, A-D, E-Er, Es-Ez)
+  	  - Has a "Preserve Name Groups" option, which can reduce the size of a
+  	    group to avoid splitting groups across prefix boundaries
+
+  * Bands is pre-determined name groups, with no limit to # files (0-9, A-E, etc.)
+
+? Questions ?
+
+	? Is there value in multi-tierd splitting (S, contains SAA, SBA, STA etc.)?
+
+	  	- Is that preferable to tyring to automatically do E-G?
+	  	- Is it simpler?
+	  	- Is the second part of the folder name needed in this case?
