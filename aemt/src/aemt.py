@@ -9,7 +9,7 @@ import itertools
 import pathlib
 import os.path
 import string
-from typing import Self
+from typing import Self, Iterator
 
 # 3rd Party/External Modules
 import click
@@ -35,6 +35,9 @@ DEFAULT_PRESERVE_GROUPING = False
 # File and Path Patterns
 SOURCE_FILE_PATTERN = '**/*.*'
 NUMERIC_FOLDER_NAME = '0-9'
+
+BAND_SEPARATOR = '-'
+
 
 # File and Folder Structures
 class Folder(list):
@@ -126,6 +129,60 @@ class SimpleSplit(Splitter):
     def folders(self: Self):
         return None
 
+class BandSplit(Splitter):
+    '''Splits files folders, based on groups of the file's first character.'''
+    def __init__(self: Self, files: list):
+        super().__init__(files)
+
+    def split(self: Self, bands: list) -> Folders:
+        
+        key_func = lambda x: x.name[0].lower()
+        folder_dict = {key: list(group) for key, group
+            in itertools.groupby(self._files, key_func)}
+        
+        folders = Folders()
+        self._add_folder_bands(folder_dict, folders, bands)
+
+        return folders
+    
+    def _add_folder_bands(
+        self: Self, folder_dict: dict, folders: Folders, bands: list):
+            # Go one band at a time ...
+            for band in bands:
+                start, end = self._get_band_extents(band.lower())
+                # ... creating a new folder for each band ...
+                folder = Folder(band.upper())
+                # ... then for every character prefix in the band ...
+                for char in char_range(start, end):
+                    # ... find the matching folders in the overall list ...                   
+                    for key in folder_dict.keys():
+                        if key[0] == char:
+                            # ... and all all of its files to the folder.
+                            for file in folder_dict[key]:
+                                folder.append(file)
+                # Add this folder, which contains all files for this band
+                # to the overall list of folders.
+                folders.append(folder)                
+                
+    def _get_band_extents(self: Self, band: str) -> tuple[str, str]:
+        '''Returns the first and last characters (range) of a band.'''
+        extents = band.split(BAND_SEPARATOR)
+        if len(extents) != 2:
+            raise ValueError(
+                f'{ERROR_TEXT}Invalid band: "{band}" - '
+                f'expected format is "A-E", "A-Z", or "0-9"')
+        
+        start = extents[0]
+        end = extents[1]        
+        if start >= end:
+            raise ValueError(
+                f'{ERROR_TEXT}Invalid band: "{band}" - '
+                f'end ({end}) must be greater than start ({start})')
+        
+        return (start, end)
+
+
+
 # Command Line Interface
 
 @click.group()
@@ -170,12 +227,10 @@ def split_command(copy: bool, delete: bool,	group: bool, max_files: int,
         click.echo(
             f'{ERROR_TEXT}Maximum number of filers per parition must be '
             f'at least {DEFAULT_MIN_FILES_PER_FOLDER}.', err=True)
-        exit(ERROR)
+        exit(ERROR)    
 
-    #partition(copy, delete, group, max_files, int(verbosity),
-    #    source_path, dest_path)
-
-    test_split_simple(source_path)
+    #test_split_simple(source_path)
+    test_band_split(source_path)
     print("\nDONE!")
 
 def test_split_simple(source_path: str):
@@ -187,39 +242,19 @@ def test_split_simple(source_path: str):
         print(f'\n{folder.name} : {len(folder)}')
         for file in folder:
             print(f'  {file.name}')
+
+def test_band_split(source_path: str):
+    file_list = build_source_file_list(source_path)
+    splitter = BandSplit(file_list)
+    folders = splitter.split(['0-9','a-e','f-j','k-o','p-t','u-z'])
+
+    for folder in folders:
+        print(f'\n{folder.name} : {len(folder)}')
+        for file in folder:
+            print(f'  {file.name}')
     
 
-# PARTITION Classes and Functions
-
-
-
-def partition(copy: bool, delete:bool, group: bool, max_files: int,
-    verbosity: int,	source_path: str, dest_path: str) -> int:
-
-    file_list = build_source_file_list(source_path)
-    if file_list == None or len(file_list) < 1:
-        echo_v('No files to partition.', verbosity)
-        return SUCCESS
-
-    grouper = MaxFilesPerFolder(file_list, max_files, group)
-    file_groups = grouper.filegroups
-    if file_groups == None or len(file_groups) < 1:
-        echo_v('No files groups to partition.', verbosity)
-        return SUCCESS	
-
-    ## TEST CODE ##
-    for g in file_groups:
-        print(f'\n{g.first_prefix} -> {g.last_prefix} : {len(g)}')
-        s, e = file_groups.get_folder_range(g)
-        print(f'{s} -> {e} : {len(g)}\n')
-        
-        for x in g:
-            print(f'  {x.name}')
-
-    ## TEST CODE ##
-
-    return 0
-
+# GENERAL Utility Functions
 
 def build_source_file_list(source_path: str) -> list:
     '''Builds the raw list of source files to be partitioned.'''
@@ -229,159 +264,12 @@ def build_source_file_list(source_path: str) -> list:
     source_files.sort(key=lambda x : x.name)
     return source_files 
 
-# A FileGroup is a LIST of SOURCE PATHS (with filenames) for all of the files
-# the group contains.  A FileGroup contains files intended for a single, common
-# destination folder/group.
-class FileGroup(list):	
+def char_range(start: str, end: str) -> Iterator[str]:
+    '''Generates the characters from start to end, inclusive.'''
+    for c in range(ord(start), ord(end) + 1):
+        yield chr(c)
 
-    @property
-    def common_prefix(self: Self) -> str:
-        # The common prefix of the file name, NOT the whole path.  Outputs are
-        # based on the file's name, not what folder it came from.
-        filenames = [path.name.lower() for path in self]
-        return os.path.commonprefix(filenames)
 
-    @property
-    def common_prefix_length(self: Self) -> int:
-        return len(self.common_prefix)
-
-    @property
-    def first_prefix(self: Self) -> str:
-        # The first UNIQUE prefix is the COMMON prefix plus the next character.
-        return self[0].name[0:self.common_prefix_length + 1]
-    
-    @property
-    def last_prefix(self: Self) -> str:
-        # The last UNIQUE prefix is the COMMON prefix plus the next character.
-        return self[len(self) - 1].name[0:self.common_prefix_length + 1]
-
-    def get_n_first_prefix_chars(self: Self, length: int) -> str:
-        return self[0].name[0:length]
-
-    def get_n_last_prefix_chars(self: Self, length: int) -> str:
-        return self[len(self) - 1].name[0:length]
-        
-# FileGroups are a list of individual FileGroup objects, and represent the
-# entire set of files to be processed.
-class FileGroups(list):
-    
-    def get_folder_range(self: Self, filegroup: FileGroup) -> tuple[str, str]:
-        # Find the PRIOR FileGroup
-        index = self.index(filegroup)
-        prior_filegroup = self[index - 1] if index > 0 else None
-
-        start_prefix_length = filegroup.common_prefix_length + 1
-        end_prefix_length = start_prefix_length
-        if prior_filegroup != None:
-            # If the FIRST character of the LAST file in the PRIOR GROUP is the
-            # same as the FIRST character of the LAST file in the CURRENT GROUP,
-            # then we need to qualify the start of the range with an
-            # extra character.
-            if (prior_filegroup.get_n_last_prefix_chars(start_prefix_length) ==
-                filegroup.get_n_first_prefix_chars(start_prefix_length)):
-                start_prefix_length += 1
-            else:
-                # Otherwise, shorten the FIRST folder name as long as that
-                # maintains a unique range (first and last folder names
-                # are unique in the first character).  This avoids
-                # "SA-SF", and instead gives "S-SF", "SG-SM" etc.
-                if start_prefix_length > 1:
-                    if (prior_filegroup.get_n_last_prefix_chars(1) !=
-                        filegroup.get_n_first_prefix_chars(1)):
-                        start_prefix_length -= 1
-
-        # If there is a NEXT filegroup ...
-        if len(self) > index + 1:
-            next_filegroup = self[index + 1]
-            # ... we may need to shorten the END prefix, if it starts a whole
-               # new letter, and is shorter than the START prefix ...            
-            if (filegroup.get_n_last_prefix_chars(1) !=
-                next_filegroup.get_n_first_prefix_chars(1)):
-                    if end_prefix_length < start_prefix_length:
-                        # Can't be less than ONE character
-                          if end_prefix_length > 1: end_prefix_length -= 1            
-
-        return (filegroup[0].name[0:start_prefix_length],
-                filegroup[len(filegroup) - 1].name[0:end_prefix_length] )
-
-class MaxFilesPerFolder(list):
-
-    def __init__(
-            self: Self,
-            path_list: list,
-            max_files_per_folder: int = DEFAULT_MAX_FILES_PER_FOLDER,
-            preserve_grouping: bool = DEFAULT_PRESERVE_GROUPING
-        ):
-        # Initialize our underlying LIST
-        list.__init__(self, path_list)
-
-        # Handle additional arguments.
-        if max_files_per_folder < DEFAULT_MIN_FILES_PER_FOLDER:
-            raise ValueError(
-                f'Maximum number of filers per folder cannot be less than '
-                f'{DEFAULT_MIN_FILES_PER_FOLDER}.')
-
-        self._max_files_per_folder = max_files_per_folder
-        self._preserve_grouping = preserve_grouping
-
-    def _adjust_group(self, group, current_file) -> int:
-        # Adjust this group so we don't split file prefixes across groups.
-        
-        # To do this, we need to compare the extend prefix (the common prefix
-        # plus one additional character) of THIS group's LAST file name, to that
-        # of the FIRST file in the NEXT group.		
-        prefix_length = group.common_prefix_length + 1
-        last_prefix = self[current_file - 1].name[0:prefix_length]
-        current_prefix = self[current_file].name[0:prefix_length]
-        
-        # IF our prefixes are the same, we DO have prefixes spanning groups.
-        # To fix this, we remove the last entries from THIS group and reset our
-        # file pointer so the trimmed files can ALL go in the NEXT group.
-        if last_prefix == current_prefix:
-            # Start on PREVIOUS file, so it gets included in the right group.
-            current_file -= 1			
-            while(current_file > 0):				
-                if self[current_file].name[0:prefix_length] == last_prefix:					
-                    group.pop()
-                    current_file -= 1
-                else:
-                    break
-            # Don't include the last file in both batches!
-            current_file += 1
-
-        return current_file
-
-    @property
-    def filegroups(self: Self) -> FileGroups:		
-        
-        total_file_count = len(self)
-        current_file = 0
-        group_file_count = 0
-        group = FileGroup()
-        groups = FileGroups()
-        groups.append(group)		
-
-        # Process ALL files ...
-        while(current_file < total_file_count):
-            if group_file_count < self._max_files_per_folder:
-                # Add FILES to this GROUP as long as we've not hit our maximum
-                group.append(self[current_file])
-                current_file += 1
-                group_file_count += 1
-            else:
-                # We've hit the maximum number of files for this group; do
-                # we need to adjust the group to preserve file grouping?
-                if self._preserve_grouping == True:
-                    current_file = self._adjust_group(group, current_file)
-
-                # Starts a new group of files.
-                group = FileGroup()
-                groups.append(group)
-                group_file_count = 0
-
-        return groups		
-
-# GENERAL Utility Functions
 def echo_v(message: str, verbosity: int):
     if verbosity == VERBOSE:
         click.echo(message)	

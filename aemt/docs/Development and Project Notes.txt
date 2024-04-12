@@ -35,7 +35,8 @@ Usage:
 
 <--[ TODOS ]-->
 
-- TODO: Remove FileGroup + FileGroups - once the MaxFilesSplitter is DONE.
+- TODO: Bands can only start and end with a single character; consider making
+		it possible to use ranges like "AS-AT", not just "A-F" etc.
 
 <--[ DESIGN & BEHAVIOR NOTEPAD ]-->
 
