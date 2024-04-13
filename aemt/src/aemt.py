@@ -14,7 +14,6 @@ from typing import Self, Iterator
 # 3rd Party/External Modules
 import click
 
-
 # Constants
 
 # Error Messages and Command Result Exit Codes
@@ -33,7 +32,7 @@ DEFAULT_MIN_FILES_PER_FOLDER = 1
 DEFAULT_PRESERVE_GROUPING = False
 
 # File and Path Patterns
-SOURCE_FILE_PATTERN = '**/*.*'
+SOURCE_FILE_PATTERN = '**/[!.]*.*'
 NUMERIC_FOLDER_NAME = '0-9'
 
 BAND_SEPARATOR = '-'
@@ -42,13 +41,32 @@ BAND_SEPARATOR = '-'
 # File and Folder Structures
 class Folder(list):
     '''A list of files, representing a single folder.'''
-    def __init__(self: Self, name: str):
+    def __init__(self: Self, name: str = ''):
         super().__init__()
         self._name = name
 
     @property
-    def name(self: Self):
+    def name(self: Self) -> str:
         return self._name
+    
+    @name.setter
+    def name(self: Self, name: str):
+        self._name = name
+
+    @property
+    def first_filename(self: Self) -> str:
+        '''Returns the name of the first file in the folder.'''
+        return '' if len(self) == 0 else self[0].name 
+
+    @property
+    def last_filename(self: Self) -> str:
+        '''Returns the name of the last file in the folder.'''
+        return '' if len(self) == 0 else self[len(self) - 1].name
+            
+    @property
+    def common_prefix(self: Self) -> str:
+        '''Returns the common prefix of all files in the folder.'''
+        return os.path.commonprefix([file.name for file in self])
     
 class Folders(list):
     '''A list of folders, representing the entire file structure.'''
@@ -181,12 +199,95 @@ class BandSplit(Splitter):
         
         return (start, end)
 
+class MaxFileSplit(Splitter):
+    '''Splits files individual folders, based on the file's first character.'''
+    def __init__(self: Self, files: list):
+        super().__init__(files)
 
+    def split(self: Self, max_files_per_folder: int, group: bool) -> Folders:
+        '''Splits the files into folders, with a maximum number of files per
+        folder.  Optionally, tries to keep files with like-prefixes together,
+        which may result in fewer files per folder.'''
+        total_files = len(self._files)
+        current_file = 0
+        folder_file_count = 0
+        folders = Folders()
+        folder = Folder()
+        folders.append(folder)
 
+        # Process all files ... one at a time, in order ...
+        while(current_file < total_files):
+            # ... if there's still room in the folder, add the current file ...
+            if folder_file_count < max_files_per_folder:
+                folder.append(self._files[current_file])
+                folder_file_count += 1
+                current_file += 1
+            else:
+                # Folder is full, so we need another; first adjust the current
+                # folder (which may remove files) to group like-prefixes.
+                if group:
+                    current_file = self._adjust_folder(folder, current_file)
+                
+                # Now we can start a new folder.
+                folder = Folder()
+                folders.append(folder)
+                folder_file_count = 0
+
+        self._set_folder_names(folders)
+        return folders
+
+    def _adjust_folder(self: Self, folder: Folder, current_file: int) -> int:
+        # Adjust folder content to keep like-prefixes together as much as
+        # possible.  For example, don't split 'AA*' files into two folders;
+        # instead stop at 'AAA*' and start a new folder for # 'AAB*' files.)
+        prefix_length = len(folder.common_prefix) + 1
+        last_prefix = self._files[current_file - 1].name[:prefix_length]
+        current_prefix = self._files[current_file].name[:prefix_length]
+
+        # Nothing to do unless the prefixes of the first and last files in the
+        # folder have the same prefix.
+        if last_prefix == current_prefix:
+            # Starting with the PREVIOUS file ...
+            current_file -= 1
+            while(current_file > 0):
+                # ... remove files from the folder until prefixes don't match.
+                if (self._files[current_file].name[:prefix_length] ==
+                    last_prefix ):
+                    folder.pop()
+                    current_file -= 1
+                else:
+                    break
+
+            # Don't add the LAST file to both folders!
+            current_file += 1
+
+        return current_file
+
+    def _set_folder_names(self: Self, folders: Folders):
+        '''Sets the names of the folders based on their contents.'''
+        # Folder Names are X->Y ...            
+        folders[0].name = folders[0].first_filename
+        folders[0].name += '-' + folders[0].last_filename
+
+        current_folder = 1
+        prior_folder = 0
+        last_folder = len(folders)
+
+        while(current_folder < last_folder):
+            last_name = folders[current_folder].last_filename
+            first_name = folders[current_folder].first_filename
+            prior_last_name = folders[prior_folder].last_filename
+
+            folders[current_folder].name = first_name + '-' + last_name + '->' + prior_last_name
+
+            current_folder += 1
+            prior_folder += 1  
+       
+        
 # Command Line Interface
 
 @click.group()
-@click.version_option('0.0.0.1')
+@click.version_option('0.0.0.2')
 def aemt():
     '''[A]tari [E]ight-bit [M]ulti-[T]ool
 
@@ -230,29 +331,38 @@ def split_command(copy: bool, delete: bool,	group: bool, max_files: int,
         exit(ERROR)    
 
     #test_split_simple(source_path)
-    test_band_split(source_path)
+    #test_band_split(source_path)
+    max_files_split(source_path)
     print("\nDONE!")
+
+# Test(er) Functions
 
 def test_split_simple(source_path: str):
     file_list = build_source_file_list(source_path)
     splitter = SimpleSplit(file_list)
     folders = splitter.split()
 
-    for folder in folders:
-        print(f'\n{folder.name} : {len(folder)}')
-        for file in folder:
-            print(f'  {file.name}')
+    print_folders(folders)
 
 def test_band_split(source_path: str):
     file_list = build_source_file_list(source_path)
     splitter = BandSplit(file_list)
     folders = splitter.split(['0-9','a-e','f-j','k-o','p-t','u-z'])
 
+    print_folders(folders)
+
+def max_files_split(source_path: str):
+    file_list = build_source_file_list(source_path)
+    splitter = MaxFileSplit(file_list)
+    folders = splitter.split(250, False)
+
+    print_folders(folders)
+    
+def print_folders(folders: Folders):
     for folder in folders:
         print(f'\n{folder.name} : {len(folder)}')
         for file in folder:
             print(f'  {file.name}')
-    
 
 # GENERAL Utility Functions
 
@@ -268,7 +378,6 @@ def char_range(start: str, end: str) -> Iterator[str]:
     '''Generates the characters from start to end, inclusive.'''
     for c in range(ord(start), ord(end) + 1):
         yield chr(c)
-
 
 def echo_v(message: str, verbosity: int):
     if verbosity == VERBOSE:
