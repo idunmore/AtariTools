@@ -62,6 +62,12 @@ class Folder(list):
     def last_filename(self: Self) -> str:
         '''Returns the name of the last file in the folder.'''
         return '' if len(self) == 0 else self[len(self) - 1].name
+    
+    @property
+    def second_to_last_filename(self: Self) -> str:
+        '''Returns the name of the second to last file in the folder.'''
+        index = len(self) - 2
+        return '' if index < 0 else self[index].name
             
     @property
     def common_prefix(self: Self) -> str:
@@ -265,25 +271,59 @@ class MaxFileSplit(Splitter):
 
     def _set_folder_names(self: Self, folders: Folders):
         '''Sets the names of the folders based on their contents.'''
-        # Folder Names are X->Y ...            
-        folders[0].name = folders[0].first_filename
-        folders[0].name += '-' + folders[0].last_filename
+        num_folders = len(folders)
+               
+        # The FIRST folder's start prefix is ALWAYS just the first character
+        # of its FIRST file name.            
+        folders[0].name = folders[0].first_filename[0]              
 
-        current_folder = 1
-        prior_folder = 0
-        last_folder = len(folders)
-
-        while(current_folder < last_folder):
-            last_name = folders[current_folder].last_filename
-            first_name = folders[current_folder].first_filename
-            prior_last_name = folders[prior_folder].last_filename
-
-            folders[current_folder].name = first_name + '-' + last_name + '->' + prior_last_name
-
-            current_folder += 1
-            prior_folder += 1  
-       
+        # We've already done the FIRST folder, so we iterate from the SECOND.
+        current_folder_index = 1
         
+        # First pass does the START prefix for each folder.
+        start_prefix = ''
+        while(current_folder_index < num_folders):
+            last_folder_index = current_folder_index - 1
+            prefix_length = first_different_character_index(
+                folders[current_folder_index].first_filename,
+                folders[last_folder_index].last_filename)
+            
+            start_prefix = folders[current_folder_index].first_filename[:prefix_length + 1]
+            folders[current_folder_index].name = f'{start_prefix}'
+
+            current_folder_index += 1
+
+        # We're doign TWO passes, as the END prefix may depend on the START
+        end_prefix = ''        
+        current_folder_index = 0
+
+        while(current_folder_index < num_folders):
+            
+            if current_folder_index < num_folders - 1:
+                                
+                end_prefix_length = first_different_character_index(
+                    folders[current_folder_index].last_filename,
+                    folders[current_folder_index + 1].first_filename)
+                
+                if len(folders[current_folder_index].name) > end_prefix_length:
+                    if (folders[current_folder_index].first_filename[0] ==
+                        folders[current_folder_index].last_filename[0]):
+                            end_prefix_length = len(folders[current_folder_index].name) - 1
+               
+
+                end_prefix = folders[current_folder_index].last_filename[:end_prefix_length + 1]
+
+            if folders[current_folder_index].name != end_prefix:
+                folders[current_folder_index].name += f'->{end_prefix}'
+            
+            current_folder_index += 1
+
+        # TODO: Fix the LAST folder name so it properly handles the END prefix.
+
+        # Last folder's END prefix is always just the FIRST character of the
+        # LAST filename, as there can be NO more files after it!         
+        folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
+                
 # Command Line Interface
 
 @click.group()
@@ -361,6 +401,7 @@ def max_files_split(source_path: str):
 def print_folders(folders: Folders):
     for folder in folders:
         print(f'\n{folder.name} : {len(folder)}')
+        
         for file in folder:
             print(f'  {file.name}')
 
@@ -378,6 +419,13 @@ def char_range(start: str, end: str) -> Iterator[str]:
     '''Generates the characters from start to end, inclusive.'''
     for c in range(ord(start), ord(end) + 1):
         yield chr(c)
+
+def first_different_character_index(first: str, second: str) -> int:
+    '''Gets index of first character that differs between two strings.'''
+    for index, (char1, char2) in enumerate(zip(first, second)):
+        if char1 != char2:
+            return index
+    return -1
 
 def echo_v(message: str, verbosity: int):
     if verbosity == VERBOSE:
