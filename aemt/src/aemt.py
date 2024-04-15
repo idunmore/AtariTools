@@ -36,6 +36,7 @@ SOURCE_FILE_PATTERN = '**/[!.]*.*'
 NUMERIC_FOLDER_NAME = '0-9'
 
 BAND_SEPARATOR = '-'
+FOLDER_RANGE_SEPARATOR = '->'
 
 
 # File and Folder Structures
@@ -273,23 +274,22 @@ class MaxFileSplit(Splitter):
         '''Sets the names of the folders based on their contents.'''
         num_folders = len(folders)
                
-        # The FIRST folder's start prefix is ALWAYS just the first character
-        # of its FIRST file name.            
-        folders[0].name = folders[0].first_filename[0]              
+        # Setup the start of the name for the first folder ...           
+        self._set_first_folder_name_start(folders)           
 
-        # We've already done the FIRST folder, so we iterate from the SECOND.
+        # ... already done the first folder, so continue from the second.
         current_folder_index = 1
         
         # First pass does the START prefix for each folder.
-        start_prefix = ''
+        start = ''
         while(current_folder_index < num_folders):
             last_folder_index = current_folder_index - 1
             prefix_length = first_different_character_index(
                 folders[current_folder_index].first_filename,
                 folders[last_folder_index].last_filename)
             
-            start_prefix = folders[current_folder_index].first_filename[:prefix_length + 1]
-            folders[current_folder_index].name = f'{start_prefix}'
+            start = folders[current_folder_index].first_filename[:prefix_length + 1]
+            folders[current_folder_index].name = f'{start}'
 
             current_folder_index += 1
 
@@ -318,17 +318,36 @@ class MaxFileSplit(Splitter):
             
             current_folder_index += 1
 
-        # TODO: Fix the LAST folder name so it properly handles the END prefix.
+        # Unique processing for the LAST folder.
+        self._set_last_folder_name_end(start, folders)
 
-        # Last folder's END prefix is always just the FIRST character of the
-        # LAST filename, as there can be NO more files after it!         
-        #folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
-        #folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0]}'
+    def _set_first_folder_name_start(self: Self, folders: Folders):
+        '''Sets the start of the first folder's name.'''
+        # The FIRST folder's start prefix is ALWAYS just the first character
+        # of its FIRST file name.            
+        folders[0].name = folders[0].first_filename[0]
 
-        if start_prefix[0] == folders[num_folders - 1].last_filename[0]:
-            folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
+    def _set_last_folder_name_end(self: Self, start: str, folders: Folders):
+        '''Sets the end prefix of the last folder.'''
+        # Get the last folder in the Folders collection.
+        last_folder = folders[len(folders) - 1]
+          
+        if start[0] == last_folder.last_filename[0]:
+            # The last file in the folder has the same prefix as the first, so
+            # we need to make the end as long as the start.
+            end = last_folder.last_filename[0:len(start)]
         else:
-            folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0]}'
+            # The last file in the folder has a different prefix than the
+            # first, so we only need the first letter of the last file's name
+            # (as there can be no more files/divisions).
+            end = last_folder.last_filename[0]
+
+        # If the start and end range of the folder is the same, then we don't
+        # need to show the end.
+        if start == end: end = ''
+        
+        last_folder.name = f'{start}{FOLDER_RANGE_SEPARATOR}{end}'
+
 # Command Line Interface
 
 @click.group()
@@ -399,7 +418,7 @@ def test_band_split(source_path: str):
 def max_files_split(source_path: str):
     file_list = build_source_file_list(source_path)
     splitter = MaxFileSplit(file_list)
-    folders = splitter.split(50, True)
+    folders = splitter.split(250, False)
 
     print_folders(folders)
     
