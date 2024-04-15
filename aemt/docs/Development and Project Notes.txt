@@ -35,7 +35,6 @@ Usage:
 
 <--[ TODOS ]-->
 
-- TODO: The LAST folder name, END PREFIX, is not always correct.
 - TODO: Can both START and END PREFIXES be handled in a single pass?
 - TODO: Bands can only start and end with a single character; consider making
 		it possible to use ranges like "AS-AT", not just "A-F" etc.

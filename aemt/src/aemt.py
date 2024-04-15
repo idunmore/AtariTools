@@ -322,8 +322,13 @@ class MaxFileSplit(Splitter):
 
         # Last folder's END prefix is always just the FIRST character of the
         # LAST filename, as there can be NO more files after it!         
-        folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
-                
+        #folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
+        #folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0]}'
+
+        if start_prefix[0] == folders[num_folders - 1].last_filename[0]:
+            folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0:len(start_prefix)]}'
+        else:
+            folders[num_folders - 1].name = f'{start_prefix}->{folders[num_folders - 1].last_filename[0]}'
 # Command Line Interface
 
 @click.group()
@@ -394,7 +399,7 @@ def test_band_split(source_path: str):
 def max_files_split(source_path: str):
     file_list = build_source_file_list(source_path)
     splitter = MaxFileSplit(file_list)
-    folders = splitter.split(250, False)
+    folders = splitter.split(50, True)
 
     print_folders(folders)
     
