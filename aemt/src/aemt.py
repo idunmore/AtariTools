@@ -103,15 +103,14 @@ class SimpleSplit(Splitter):
         
         # Create the Folders container, to add individual folders to.
         folders = Folders()
-
+        
         self._add_numeric_folder(folder_dict, folders)
         self._add_alpha_folders(folder_dict, folders)
 
-        # Group all the numeric prefixes into one folder.
-        #folders.append(self._build_numeric_folder(folder_dict))
         return folders     
     
     def _add_numeric_folder(self: Self, folder_dict: dict, folders: Folders):
+        # Group all the numeric prefixes into one folder.
         folder = Folder(NUMERIC_FOLDER_NAME)        
         
         for key in folder_dict.keys():
