@@ -65,12 +65,6 @@ class Folder(list):
         return '' if len(self) == 0 else self[len(self) - 1].name
     
     @property
-    def second_to_last_filename(self: Self) -> str:
-        '''Returns the name of the second to last file in the folder.'''
-        index = len(self) - 2
-        return '' if index < 0 else self[index].name
-            
-    @property
     def common_prefix(self: Self) -> str:
         '''Returns the common prefix of all files in the folder.'''
         return os.path.commonprefix([file.name for file in self])
@@ -78,22 +72,7 @@ class Folder(list):
 class Folders(list):
     '''A list of folders, representing the entire file structure.'''
     def __init__(self: Self):
-        super().__init__()
-
-    def add_folder(self: Self, folder: Folder):
-        self.append(folder)
-
-    def get_folder(self: Self, name: str) -> Folder:
-        for folder in self:
-            if folder.name == name:
-                return folder
-        return None
-
-    def get_folder_index(self: Self, name: str) -> int:
-        for index, folder in enumerate(self):
-            if folder.name == name:
-                return index
-        return -1
+        super().__init__()      
     
 # Splitters
 
@@ -246,7 +225,7 @@ class MaxFileSplit(Splitter):
     def _adjust_folder(self: Self, folder: Folder, current_file: int) -> int:
         # Adjust folder content to keep like-prefixes together as much as
         # possible.  For example, don't split 'AA*' files into two folders;
-        # instead stop at 'AAA*' and start a new folder for # 'AAB*' files.)
+        # instead stop at 'AAA*' and start a new folder for # 'AAB*' files.
         prefix_length = len(folder.common_prefix) + 1
         last_prefix = self._files[current_file - 1].name[:prefix_length]
         current_prefix = self._files[current_file].name[:prefix_length]
@@ -358,7 +337,7 @@ class MaxFileSplit(Splitter):
             end = last_folder.last_filename[0]
 
         # If the start and end range of the folder is the same, then we don't
-        # need to show the end.
+        # need to show the end.        
         if start == end: end = ''
         
         last_folder.name = f'{start}{FOLDER_RANGE_SEPARATOR}{end}'    
