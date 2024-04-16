@@ -35,8 +35,9 @@ DEFAULT_PRESERVE_GROUPING = False
 SOURCE_FILE_PATTERN = '**/[!.]*.*'
 NUMERIC_FOLDER_NAME = '0-9'
 
-BAND_SEPARATOR = '-'
-FOLDER_RANGE_SEPARATOR = '->'
+BAND_RANGE_SEPARATOR = '-'
+BAND_SEPARATOR = ','
+FOLDER_RANGE_SEPARATOR = '-'
 
 # File and Folder Structures
 class Folder(list):
@@ -168,7 +169,7 @@ class BandSplit(Splitter):
                 
     def _get_band_extents(self: Self, band: str) -> tuple[str, str]:
         '''Returns the first and last characters (range) of a band.'''
-        extents = band.split(BAND_SEPARATOR)
+        extents = band.split(BAND_RANGE_SEPARATOR)
         if len(extents) != 2:
             raise ValueError(
                 f'{ERROR_TEXT}Invalid band: "{band}" - '
@@ -333,10 +334,9 @@ class MaxFileSplit(Splitter):
             end = last_folder.last_filename[0]
 
         # If the start and end range of the folder is the same, then we don't
-        # need to show the end.        
-        if start == end: end = ''
-        
-        last_folder.name = f'{start}{FOLDER_RANGE_SEPARATOR}{end}'    
+        # need to show the end (or the separator).
+        end = '' if start == end else f'{FOLDER_RANGE_SEPARATOR}{end}'        
+        last_folder.name = f'{start}{end}'    
 
 # Command Line Interface
 
@@ -357,20 +357,74 @@ def aemt():
     help= f'Copies files to new partitions (else does nothing)')
 @click.option('-d', '--delete', is_flag=True, default=False,
     help= 'Deletes original files after copying them (move)')
-@click.option('-g', '--group', is_flag=True, default=DEFAULT_PRESERVE_GROUPING,
-    help='Groups files by like prefixes')
-@click.option('-m', '--max_files', type=int, default=DEFAULT_MAX_FILES_PER_FOLDER,
-    show_default=True, help='Maximum # of files per partition')
 @click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
     default='1', show_default=True, help='Status/progress reporting verbosity')
 @click.argument('source_path', default='./',
     type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.argument('dest_path', default='./',
     type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def split_command(copy: bool, delete: bool,	group: bool, max_files: int,
-    verbosity: str,	source_path: str, dest_path: str) -> int:
-    '''Splits a set of source files into smaller, alphabetic, partitions.'''
+def split_command(copy: bool, delete: bool, verbosity: str, source_path: str,
+    dest_path: str) -> int:
+    '''Splits source files into smaller, alphabetic/numeric partitions.'''
+    
+    # Sanity check input
+    if source_path == dest_path:
+        click.echo(
+            f'{ERROR_TEXT}SOURCE_PATH: "{source_path}" and DEST_PATH: '
+            f'"{dest_path}" cannot be the same.', err=True)
+        exit(ERROR)
 
+    # TODO: Temporary test code
+    file_list = build_source_file_list(source_path)
+    splitter = SimpleSplit(file_list)
+    folders = splitter.split()
+    print_folders(folders)   
+
+@aemt.command('band')
+@click.option('-c', '--copy', is_flag=True, default=False,
+    help= f'Copies files to new partitions (else does nothing)')
+@click.option('-d', '--delete', is_flag=True, default=False,
+    help= 'Deletes original files after copying them (move)')
+@click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
+    default='1', show_default=True, help='Status/progress reporting verbosity')
+@click.option('-b', '--bands', default='"0-9,a-e,f-j,k-o,p-t,u-z"',
+    show_default=True, help='Comma-separated list of bands ("0-9,A-E" etc.)')   
+@click.argument('source_path', default='./',
+    type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.argument('dest_path', default='./',
+    type=click.Path(exists=False, file_okay=False, dir_okay=True))
+def band_command(copy: bool, delete: bool, verbosity: str, bands: str,
+	source_path: str, dest_path: str):
+    '''Splits source files into smaller, "bands" (e.g., 0-9, A-E etc.).'''
+    
+    file_list = build_source_file_list(source_path)
+    splitter = BandSplit(file_list)
+    # TODO: Might need to strip whitespace from bands string.
+    folders = splitter.split(list(bands.split(BAND_SEPARATOR)))
+    print_folders(folders)    
+
+@aemt.command('max')
+@click.option('-c', '--copy', is_flag=True, default=False,
+    help= f'Copies files to new partitions (else does nothing)')
+@click.option('-d', '--delete', is_flag=True, default=False,
+    help= 'Deletes original files after copying them (move)')
+@click.option('-g', '--group', is_flag=True, default=DEFAULT_PRESERVE_GROUPING,
+    help='Groups files by like prefixes')
+@click.option('-m', '--max_files', type=int, show_default=True,
+    default=DEFAULT_MAX_FILES_PER_FOLDER,
+    help='Maximum # of files per partition')
+@click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
+    default='1', show_default=True, help='Status/progress reporting verbosity')
+@click.argument('source_path', default='./',
+    type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.argument('dest_path', default='./',
+    type=click.Path(exists=False, file_okay=False, dir_okay=True))
+def max_command(copy: bool, delete: bool,	group: bool, max_files: int,
+    verbosity: str,	source_path: str, dest_path: str) -> int:
+    '''Splits source files into folders, with a max # of files each.
+        Optionally, tries to group files with like-prefixes together
+        (may result in fewer than the max # of files per folder).'''
+    
     # Sanity check input
     if source_path == dest_path:
         click.echo(
@@ -382,35 +436,15 @@ def split_command(copy: bool, delete: bool,	group: bool, max_files: int,
         click.echo(
             f'{ERROR_TEXT}Maximum number of filers per parition must be '
             f'at least {DEFAULT_MIN_FILES_PER_FOLDER}.', err=True)
-        exit(ERROR)    
+        exit(ERROR)   
 
-    #test_split_simple(source_path)
-    #test_band_split(source_path)
-    max_files_split(source_path)
-    print("\nDONE!")
-
-# Test(er) Functions
-
-def test_split_simple(source_path: str):
-    file_list = build_source_file_list(source_path)
-    splitter = SimpleSplit(file_list)
-    folders = splitter.split()
-
-    print_folders(folders)
-
-def test_band_split(source_path: str):
-    file_list = build_source_file_list(source_path)
-    splitter = BandSplit(file_list)
-    folders = splitter.split(['0-9','a-e','f-j','k-o','p-t','u-z'])
-
-    print_folders(folders)
-
-def max_files_split(source_path: str):
+    # TODO: Temporary test code
     file_list = build_source_file_list(source_path)
     splitter = MaxFileSplit(file_list)
-    folders = splitter.split(250, False)
+    folders = splitter.split(max_files, group)
+    print_folders(folders)     
 
-    print_folders(folders)
+# Test(er) Functions
     
 def print_folders(folders: Folders):
     for folder in folders:
