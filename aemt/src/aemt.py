@@ -38,7 +38,6 @@ NUMERIC_FOLDER_NAME = '0-9'
 BAND_SEPARATOR = '-'
 FOLDER_RANGE_SEPARATOR = '->'
 
-
 # File and Folder Structures
 class Folder(list):
     '''A list of files, representing a single folder.'''
@@ -103,7 +102,7 @@ class SimpleSplit(Splitter):
         
         # Create the Folders container, to add individual folders to.
         folders = Folders()
-        
+
         self._add_numeric_folder(folder_dict, folders)
         self._add_alpha_folders(folder_dict, folders)
 
@@ -250,10 +249,14 @@ class MaxFileSplit(Splitter):
 
     def _set_folder_names(self: Self, folders: Folders):
         '''Sets the names of the folders based on their contents.'''
+        # Setup the start of the name for the first folder ...           
+        self._set_first_folder_name_start(folders)    
         # We do the start of all ours folder's name/ranges first ...
         self._set_folder_name_start(folders)     
         # ... as the end name is dependent on the start name/range.   
-        self._set_folder_name_end(folders)           
+        self._set_folder_name_end(folders)    
+         # Unique processing for the LAST folder.        
+        self._set_last_folder_name_end(folders)       
 
     def _set_first_folder_name_start(self: Self, folders: Folders):
         '''Sets the start of the first folder's name.'''
@@ -263,9 +266,6 @@ class MaxFileSplit(Splitter):
 
     def _set_folder_name_start(self: Self, folders: Folders):
         '''Sets the start name range for each folder.'''
-        # Setup the start of the name for the first folder ...           
-        self._set_first_folder_name_start(folders)    
-
         # We've already done the first folder, so continue from the second.
         current_folder_index = 1
         
@@ -314,10 +314,7 @@ class MaxFileSplit(Splitter):
             if current_folder.name != end:
                 current_folder.name += f'{FOLDER_RANGE_SEPARATOR}{end}'
             
-            current_folder_index += 1
-
-        # Unique processing for the LAST folder.        
-        self._set_last_folder_name_end(folders)
+            current_folder_index += 1       
 
     def _set_last_folder_name_end(self: Self, folders: Folders):
         '''Sets the end prefix of the last folder.'''
@@ -411,7 +408,7 @@ def test_band_split(source_path: str):
 def max_files_split(source_path: str):
     file_list = build_source_file_list(source_path)
     splitter = MaxFileSplit(file_list)
-    folders = splitter.split(50, False)
+    folders = splitter.split(250, False)
 
     print_folders(folders)
     
