@@ -8,6 +8,7 @@
 import itertools
 import pathlib
 import os.path
+import shutil
 import string
 from typing import Self, Iterator
 
@@ -123,7 +124,7 @@ class SimpleSplit(Splitter):
         '''Add all non-numeric folders to the Folders container.'''
         for key in folder_dict.keys():
             if key in string.ascii_lowercase:
-                folder = Folder(key)
+                folder = Folder(key.upper())
                 for file in folder_dict[key]:
                     folder.append(file)
                 folders.append(folder)
@@ -263,7 +264,7 @@ class MaxFileSplit(Splitter):
         '''Sets the start of the first folder's name.'''
         # The FIRST folder's start prefix is ALWAYS just the first character
         # of its FIRST file name.            
-        folders[0].name = folders[0].first_filename[0]
+        folders[0].name = folders[0].first_filename[0].upper()
 
     def _set_folder_name_start(self: Self, folders: Folders):
         '''Sets the start name range for each folder.'''
@@ -282,7 +283,7 @@ class MaxFileSplit(Splitter):
                 current_folder.first_filename,
                 last_folder.last_filename)            
             start = current_folder.first_filename[:start_length + 1]
-            current_folder.name = f'{start}'
+            current_folder.name = f'{start}'.upper()
 
             current_folder_index += 1
 
@@ -309,11 +310,11 @@ class MaxFileSplit(Splitter):
                 current_folder.last_filename[0]):
                     end_length = len(current_folder.name) - 1        
 
-            end = current_folder.last_filename[:end_length + 1]
+            end = current_folder.last_filename[:end_length + 1].upper()
 
             # Add end to the folder name ONLY if it is different to start (name)
             if current_folder.name != end:
-                current_folder.name += f'{FOLDER_RANGE_SEPARATOR}{end}'
+                current_folder.name += f'{FOLDER_RANGE_SEPARATOR}{end}'.upper()
             
             current_folder_index += 1       
 
@@ -336,7 +337,7 @@ class MaxFileSplit(Splitter):
         # If the start and end range of the folder is the same, then we don't
         # need to show the end (or the separator).
         end = '' if start == end else f'{FOLDER_RANGE_SEPARATOR}{end}'        
-        last_folder.name = f'{start}{end}'    
+        last_folder.name = f'{start}{end}'.upper()
 
 # Command Line Interface
 
@@ -365,20 +366,20 @@ def aemt():
     type=click.Path(exists=False, file_okay=False, dir_okay=True))
 def split_command(copy: bool, delete: bool, verbosity: str, source_path: str,
     dest_path: str) -> int:
-    '''Splits source files into smaller, alphabetic/numeric partitions.'''
+    '''Splits source files into smaller, alphabetic/numeric folders.'''
     
     # Sanity check input
-    if source_path == dest_path:
-        click.echo(
-            f'{ERROR_TEXT}SOURCE_PATH: "{source_path}" and DEST_PATH: '
-            f'"{dest_path}" cannot be the same.', err=True)
-        exit(ERROR)
+    validate_paths(source_path, dest_path)
 
-    # TODO: Temporary test code
+    # Get the files to be split ...
     file_list = build_source_file_list(source_path)
+    # ... select the approrpiate splitter ...
     splitter = SimpleSplit(file_list)
+    # ... get the split folder/filer structure ...
     folders = splitter.split()
-    print_folders(folders)   
+    # ... and then process the files:
+    process_splits(folders, pathlib.Path(dest_path), copy, delete,
+        int(verbosity))
 
 @aemt.command('band')
 @click.option('-c', '--copy', is_flag=True, default=False,
@@ -387,7 +388,7 @@ def split_command(copy: bool, delete: bool, verbosity: str, source_path: str,
     help= 'Deletes original files after copying them (move)')
 @click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
     default='1', show_default=True, help='Status/progress reporting verbosity')
-@click.option('-b', '--bands', default='"0-9,a-e,f-j,k-o,p-t,u-z"',
+@click.option('-b', '--bands', default='0-9,a-e,f-j,k-o,p-t,u-z',
     show_default=True, help='Comma-separated list of bands ("0-9,A-E" etc.)')   
 @click.argument('source_path', default='./',
     type=click.Path(exists=True, file_okay=False, dir_okay=True))
@@ -397,11 +398,18 @@ def band_command(copy: bool, delete: bool, verbosity: str, bands: str,
 	source_path: str, dest_path: str):
     '''Splits source files into smaller, "bands" (e.g., 0-9, A-E etc.).'''
     
+    validate_paths(source_path, dest_path)
+
+    # Get the files to be split ...
     file_list = build_source_file_list(source_path)
     splitter = BandSplit(file_list)
-    # TODO: Might need to strip whitespace from bands string.
+    # ... get the split folder/filer structure ... 
+    # ... removing any spaces in the "bands" specification ...  
+    bands = bands.replace(' ', '')
     folders = splitter.split(list(bands.split(BAND_SEPARATOR)))
-    print_folders(folders)    
+    # ... and then process the files:
+    process_splits(folders, pathlib.Path(dest_path), copy, delete,
+        int(verbosity))   
 
 @aemt.command('max')
 @click.option('-c', '--copy', is_flag=True, default=False,
@@ -426,11 +434,7 @@ def max_command(copy: bool, delete: bool,	group: bool, max_files: int,
         (may result in fewer than the max # of files per folder).'''
     
     # Sanity check input
-    if source_path == dest_path:
-        click.echo(
-            f'{ERROR_TEXT}SOURCE_PATH: "{source_path}" and DEST_PATH: '
-            f'"{dest_path}" cannot be the same.', err=True)
-        exit(ERROR)
+    validate_paths(source_path, dest_path)
 
     if max_files < DEFAULT_MIN_FILES_PER_FOLDER:
         click.echo(
@@ -438,22 +442,60 @@ def max_command(copy: bool, delete: bool,	group: bool, max_files: int,
             f'at least {DEFAULT_MIN_FILES_PER_FOLDER}.', err=True)
         exit(ERROR)   
 
-    # TODO: Temporary test code
     file_list = build_source_file_list(source_path)
     splitter = MaxFileSplit(file_list)
+    # ... get the split folder/filer structure ...       
     folders = splitter.split(max_files, group)
-    print_folders(folders)     
+    # ... and then process the files:
+    process_splits(folders, pathlib.Path(dest_path), copy, delete,
+        int(verbosity))
+   
+# Splitter Processing Functions
+def process_splits(folders: Folders, dest_path: pathlib.Path,
+    copy: bool, delete: bool, verbosity: int):
+    '''Processes Folders and splits the files based on its contents.'''
 
-# Test(er) Functions
-    
-def print_folders(folders: Folders):
-    for folder in folders:
-        print(f'\n{folder.name} : {len(folder)}')
-        
-        for file in folder:
-            print(f'  {file.name}')
+    # Iterate all folders ...
+    if verbosity == PROGRESS:
+        # ... showing a progress bar.
+        with click.progressbar(folders, label='Processing folders') as bar:
+            for folder in bar:
+                process_folder(folder, dest_path, copy, delete, verbosity)
+    else:
+        # ... no progress bar; verbosity sets silent or file-by-file logging
+        for folder in folders:
+            process_folder(folder, dest_path, copy, delete, verbosity)        
+
+def process_folder(folder: Folder, dest_path: pathlib.Path, copy: bool,
+    delete: bool, verbosity: int):
+    '''Processes a single folder, copying/moving its files to the destination.'''
+
+    folder_path = dest_path / folder.name    
+    echo_v(f'Creating folder: {folder_path}', verbosity)
+    if copy:
+        # Only create folders if we're in COPY mode.        
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+    for file in folder:
+        dest_file = folder_path / file.name
+        echo_v(f'Copying file: {file} to {dest_file}', verbosity)
+        if copy:
+            # Only copy files if we're in COPY mode.
+            shutil.copy(file, dest_file, follow_symlinks=False)
+            if delete:
+                echo_v(f'Deleting file: {file}', verbosity)
+                #os.remove(file)
+
 
 # GENERAL Utility Functions
+
+def validate_paths(source_path, dest_path):
+    '''Validates source and dest paths; if not valid exits with error.'''
+    if source_path == dest_path:
+        click.echo(
+            f'{ERROR_TEXT}SOURCE_PATH: "{source_path}" and DEST_PATH: '
+            f'"{dest_path}" cannot be the same.', err=True)
+        exit(ERROR)
 
 def build_source_file_list(source_path: str) -> list:
     '''Builds the raw list of source files to be partitioned.'''
