@@ -12,6 +12,7 @@ import click
 
 # Local Application Modules
 import split
+import cartridge
 
 # Constants
 
@@ -48,4 +49,5 @@ def echo_v(message: str, verbosity: int):
 # Run!
 if __name__ == '__main__':
     aemt.add_command(split.split)
+    aemt.add_command(cartridge.cart)
     aemt()
