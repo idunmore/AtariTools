@@ -219,7 +219,7 @@ class CartridgeHeader:
 
 # General Atari Functions
 def compute_checksum(bytes: bytes) -> int:
-    '''Computes the checksum for a sequence of bytes'''
+    '''Computes the .car checksum for a sequence of bytes'''
     result = 0
     for byte in bytes:
         result += byte & CHECKSUM_MASK
@@ -248,6 +248,7 @@ def verify(filename: str):
     print(f'Header: {header.signature} Type: {header.type} Checksum: 0x{header.checksum:08x} Actual: 0x{actual_checksum:08x}')
     print(f'Is Valid: {header.is_valid} Reason: {header.invalid_reason}')
     print(f'Description: {cart_types[header.type].description}')
+    
 
 # Run!
 if __name__ == '__main__':
