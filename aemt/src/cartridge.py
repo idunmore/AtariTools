@@ -25,28 +25,76 @@ SILENT = 0
 PROGRESS = 1
 VERBOSE = 2
 
+# General Constants
+BYTES_PER_KILOBYTE = 1024
+
+# MSB (Most Significant Bit) Constants
+MSB_DIGIT_1 = 256 * 256 * 256
+MSB_DIGIT_2 = 256 * 256
+MSB_DIGIT_3 = 256
+MSB_DIGIT_4 = 1
+
 # Cartridge Constants
 
 CHECKSUM_MASK = 0x000000FF
+FIRST_CARTRIDGE_TYPE = 1
+LAST_CARTRIDGE_TYPE = 70
+CART_HEADER_SIZE = 16
+CART_PREAMBLE = 'CART'
 
+SIG_OFFSET = 0
+SIG_LENGTH = 4
+TYPE_OFFSET = 4
+TYPE_LENGTH = 4
+CHECKSUM_OFFSET = 8
+CHECKSUM_LENGTH = 4
+IMAGE_OFFSET = 16
+
+# Machines Types
 class Machine(enum.Enum):
     '''Atari 8-bit Cartridge Machine Types'''
     ATARI_800_XL_XE = 0
+    '''Atari 400, 800, 800XL, 1200XL, 600XL, 65XE, 130XE, 800XE, XEGS, and
+    compatible machines.'''
     ATARI_800 = 1
+    '''Atari 800-Specific - Typically RIGHT SLOT cartridges.'''
     ATARI_5200 = 2
-  
+
 # Cartridge Type Class
 class CartridgeType:
-    '''Cartridge Type Class'''
-    def __init__(self: Self, id: int, size_kilobytes: int,
-        machine: str, description: str):
-        pass
+    '''Cartridge Type & Details'''
+    def __init__(self: Self, type: int, size_kilobytes: int,
+        machine: Machine, description: str):        
 
-        self._id = id
+        if type < FIRST_CARTRIDGE_TYPE or type > LAST_CARTRIDGE_TYPE:
+            raise ValueError(f'Invalid cartridge Type: {type}')
+        self._type = type
+
+        if (size_kilobytes > BYTES_PER_KILOBYTE and
+            size_kilobytes % BYTES_PER_KILOBYTE != 0):
+            raise ValueError(f'Invalid cartridge size: {size_kilobytes}')        
         self._size_kilobytes = size_kilobytes
-        self._description = description
-        self._machine = machine
 
+        self._machine = machine
+        self._description = description        
+
+    @property
+    def id(self: Self) -> int:
+        return self._id
+    
+    @property
+    def size_kilobytes(self: Self) -> int:
+        return self._size_kilobytes
+    
+    @property
+    def machine(self: Self) -> str:
+        return self._machine
+    
+    @property
+    def description(self: Self) -> str:
+        return self._description
+    
+# Currently (04/19/24) known cartridge ID/types
 cart_types = {
     1: CartridgeType(1, 8,  Machine.ATARI_800_XL_XE, 'Standard 8 KB cartridge', ),
     2: CartridgeType(2, 16, Machine.ATARI_800_XL_XE, 'Standard 16 KB cartridge'),
@@ -120,6 +168,55 @@ cart_types = {
     70: CartridgeType(70, 64, Machine.ATARI_800_XL_XE, 'aDawliah 64 KB cartridge')
 }
 
+class CartridgeHeader:
+    def __init__(self: Self, bytes: bytes):
+        if (len(bytes)) < CART_HEADER_SIZE:
+            raise ValueError(
+                f'Invalid cartridge header size; expected: {CART_HEADER_SIZE} '
+                f'bytes, got: {len(bytes)}')
+        self._raw_bytes = bytes
+        self._invalid_reason = None
+
+    @property
+    def signature(self: Self) -> str:
+        sig = self._raw_bytes[SIG_OFFSET:SIG_LENGTH]
+        return f'{chr(sig[0])}{chr(sig[1])}{chr(sig[2])}{chr(sig[3])}'
+    
+    @property
+    def type(self: Self) -> int:
+        type = self._raw_bytes[TYPE_OFFSET:TYPE_OFFSET + TYPE_LENGTH]
+        return ((type[0] * MSB_DIGIT_1) + (type[1] * MSB_DIGIT_2) +
+                (type[2] * MSB_DIGIT_3) + (type[3] * MSB_DIGIT_4))        
+    
+    @property
+    def checksum(self: Self) -> int:
+        checksum = (
+            self._raw_bytes[CHECKSUM_OFFSET:CHECKSUM_OFFSET + CHECKSUM_LENGTH])
+        return ((checksum[0] * MSB_DIGIT_1) + (checksum[1] * MSB_DIGIT_2) +
+                (checksum[2] * MSB_DIGIT_3) + (checksum[3] * MSB_DIGIT_4))        
+    
+    @property
+    def is_valid(self: Self) -> bool:
+        if self.signature != CART_PREAMBLE:
+            self._invalid_reason = 'Invalid signature'
+            return False
+        if self.type not in cart_types:
+            self._invalid_reason = 'Invalid cartridge type'
+            return False
+        if self.checksum != compute_checksum(self._raw_bytes[IMAGE_OFFSET:]):
+            self._invalid_reason = 'Header checksum mismatch with cartridge'
+            return False
+        
+        self._invalid_reason = None
+        return True
+    
+    @property
+    def invalid_reason(self: Self) -> str:
+        '''Reason cartridge is invalid, if any; otherwise None'''
+        # Invoke "is_valid" to set the invalid reason
+        is_valid = self.is_valid
+        return self._invalid_reason
+
 # General Atari Functions
 def compute_checksum(bytes: bytes) -> int:
     '''Computes the checksum for a sequence of bytes'''
@@ -140,11 +237,17 @@ def id():
 
 @cart.command('verify')
 @click.argument('filename', type=click.Path(exists=True))
-def verify():
+def verify(filename: str):
     '''Verifies the cartridge header, compares the header checksum to the
     actual checksum of the cartridge data, and compares indicated cartridge type
     to the size of the cartridge image.'''
-    pass    
+    file = pathlib.Path(filename)
+    data = file.read_bytes()
+    header = CartridgeHeader(data)
+    actual_checksum = compute_checksum(data[CART_HEADER_SIZE:])
+    print(f'Header: {header.signature} Type: {header.type} Checksum: 0x{header.checksum:08x} Actual: 0x{actual_checksum:08x}')
+    print(f'Is Valid: {header.is_valid} Reason: {header.invalid_reason}')
+    print(f'Description: {cart_types[header.type].description}')
 
 # Run!
 if __name__ == '__main__':
