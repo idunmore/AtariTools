@@ -8,7 +8,7 @@
 
 import enum
 import pathlib
-from typing import Self, Iterator
+from typing import Self
 
 # 3rd Party/External Modules
 import click
@@ -36,6 +36,8 @@ MSB_DIGIT_4 = 1
 
 # Cartridge Constants
 
+CART_PATTERN = '*.car'
+CART_PATTERN_RECR = '**/*.car'
 CHECKSUM_MASK = 0x000000FF
 FIRST_CARTRIDGE_TYPE = 1
 LAST_CARTRIDGE_TYPE = 70
@@ -49,6 +51,18 @@ TYPE_LENGTH = 4
 CHECKSUM_OFFSET = 8
 CHECKSUM_LENGTH = 4
 IMAGE_OFFSET = 16
+
+# Format Constants
+CSV_SEPARATOR = ','
+CSV_QUOTE = '"'
+SEPARATOR = ' | '
+QUOTE = ''
+CSV_SIG_START =''
+CSV_SIG_END = ''
+SIG_START ='['
+SIG_END=']'
+CSV_TYPE_WIDTH = 1
+TYPE_WIDTH = 2
 
 # Machines Types
 class Machine(enum.Enum):
@@ -186,14 +200,18 @@ class CartridgeHeader:
     def type(self: Self) -> int:
         type = self._raw_bytes[TYPE_OFFSET:TYPE_OFFSET + TYPE_LENGTH]
         return ((type[0] * MSB_DIGIT_1) + (type[1] * MSB_DIGIT_2) +
-                (type[2] * MSB_DIGIT_3) + (type[3] * MSB_DIGIT_4))        
-    
+                (type[2] * MSB_DIGIT_3) + (type[3] * MSB_DIGIT_4))
+
     @property
     def checksum(self: Self) -> int:
         checksum = (
             self._raw_bytes[CHECKSUM_OFFSET:CHECKSUM_OFFSET + CHECKSUM_LENGTH])
         return ((checksum[0] * MSB_DIGIT_1) + (checksum[1] * MSB_DIGIT_2) +
                 (checksum[2] * MSB_DIGIT_3) + (checksum[3] * MSB_DIGIT_4))        
+    
+    @property
+    def description(self: Self) -> str:
+        return cart_types[self.type].description
     
     @property
     def is_valid(self: Self) -> bool:
@@ -207,7 +225,7 @@ class CartridgeHeader:
             self._invalid_reason = 'Header checksum mismatch with cartridge'
             return False
         
-        self._invalid_reason = None
+        self._invalid_reason = 'Valid'
         return True
     
     @property
@@ -232,23 +250,80 @@ def cart():
     pass
 
 @cart.command('id')
-def id():
-    pass
+@click.option('-c', '--csv', is_flag=True, default=False,
+    help='Output in CSV format')
+@click.option('-h', '--header', is_flag=True, default=False,
+    help='Output a header if in CSV format')
+@click.option('-r', '--recurse', is_flag=True, default=False,
+    help='Process directories recursively for .car files')
+@click.option('-v', '--verbose', is_flag=True, default=False,
+    help='Verbose output')
+@click.argument('source_path', 
+    type=click.Path(exists=True, file_okay=True, dir_okay=True))
+def id(csv: bool, header: bool, recurse: bool, verbose: bool,source_path: str):
+    '''Identifies the cartridge type and verifies the header and data.
 
-@cart.command('verify')
-@click.argument('filename', type=click.Path(exists=True))
-def verify(filename: str):
-    '''Verifies the cartridge header, compares the header checksum to the
-    actual checksum of the cartridge data, and compares indicated cartridge type
-    to the size of the cartridge image.'''
-    file = pathlib.Path(filename)
+    \b
+      SOURCE_PATH may be a directory or a file; if a directory *only* .car files
+      will be processed.  The -r/--recurse option will include subdirectories.
+    '''
+    files = build_source_file_list(source_path, recurse)
+    if files is None:    
+        print(f'No files to identify.')
+        exit(SUCCESS)
+
+    if csv and header:
+        if verbose:
+            print(f'Signature,Type,Checksum,Actual Checksum,Is Valid,'
+                  f'Description,Reason,File')
+        else:
+            print(f'Signature,Type,Checksum,Actual Checksum,Is Valid')
+    
+    for file in files:
+        id_cartridge(file, csv, verbose)
+    
+    exit(SUCCESS)
+
+def build_source_file_list(source_path: str, recurse: bool) -> list:
+    # We can work on a single file, or a directory (with optional recursion),
+    # so build a list of file(s) accordingly
+    source_path = pathlib.Path(source_path)
+    files = None
+    if source_path.is_file():
+        files = []
+        files.append(source_path)
+    elif source_path.is_dir():
+        pattern = CART_PATTERN_RECR if recurse else CART_PATTERN      
+        files = list(source_path.glob(pattern))
+        files.sort(key=lambda x: x.name.lower())
+            
+    return files
+
+def id_cartridge(file: pathlib.Path, csv: bool, verbose: bool):
+    # Get the cartridge header and validate it
     data = file.read_bytes()
     header = CartridgeHeader(data)
     actual_checksum = compute_checksum(data[CART_HEADER_SIZE:])
-    print(f'Header: {header.signature} Type: {header.type} Checksum: 0x{header.checksum:08x} Actual: 0x{actual_checksum:08x}')
-    print(f'Is Valid: {header.is_valid} Reason: {header.invalid_reason}')
-    print(f'Description: {cart_types[header.type].description}')
+
+    # Setup output formatting
+    sep, quote = (CSV_SEPARATOR, CSV_QUOTE) if csv else (SEPARATOR, QUOTE)
+    sig_start, sig_end = ((CSV_SIG_START, CSV_SIG_END) if csv
+                           else (SIG_START, SIG_END))
+    type_width = CSV_TYPE_WIDTH if csv else TYPE_WIDTH
     
+    # Build the base output ...    
+    item = (f'{sig_start}{header.signature}{sig_end}{sep}'
+            f'{header.type:{type_width}}{sep}0x{header.checksum:08x}{sep}'
+            f'0x{actual_checksum:08x}{sep}'            
+            f'{header.is_valid}{sep}'
+            f'{quote}{header.description}{quote}')
+    
+    # ... and add the verbose elements if requested
+    if verbose:
+        item += (f'{sep}{quote}{header.invalid_reason}{quote}{sep}'
+                 f'{quote}{str(file)}{quote}')              
+    
+    print(item)
 
 # Run!
 if __name__ == '__main__':
