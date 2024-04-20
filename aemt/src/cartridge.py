@@ -93,8 +93,8 @@ class CartridgeType:
         self._description = description        
 
     @property
-    def id(self: Self) -> int:
-        return self._id
+    def type(self: Self) -> int:
+        return self._type
     
     @property
     def size_kilobytes(self: Self) -> int:
@@ -249,6 +249,16 @@ def cart():
     '''Identifies and validates Atari 8-bit cartridges.'''
     pass
 
+@cart.command('list_types')
+def list_types():
+    '''Lists known cartridge types and specifications.'''
+    print('Type | Size (KB)| Machine(s) | Description')
+    print('-----|----------|------------|' + '-' * 45)
+    for cart in cart_types.values():        
+        print(f' {cart.type:3}{SEPARATOR}{cart.size_kilobytes:8,}{SEPARATOR}'
+              f'{str(cart.machine)[14:]:<10}{SEPARATOR}{cart.description}')
+    exit(SUCCESS)
+
 @cart.command('id')
 @click.option('-c', '--csv', is_flag=True, default=False,
     help='Output in CSV format')
@@ -260,7 +270,7 @@ def cart():
     help='Verbose output')
 @click.argument('source_path', 
     type=click.Path(exists=True, file_okay=True, dir_okay=True))
-def id(csv: bool, header: bool, recurse: bool, verbose: bool,source_path: str):
+def id(csv: bool, header: bool, recurse: bool, verbose: bool, source_path: str):
     '''Identifies the cartridge type and verifies the header and data.
 
     \b
