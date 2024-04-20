@@ -4,15 +4,13 @@
 #
 # License: https://github.com/idunmore/AtariTools/blob/master/LICENSE
 
-# Native Python Modules
-from typing import Self, Iterator
-
 # 3rd Party/External Modules
 import click
 
 # Local Application Modules
 import split
 import cartridge
+import config
 
 # Constants
 
@@ -50,4 +48,5 @@ def echo_v(message: str, verbosity: int):
 if __name__ == '__main__':
     aemt.add_command(split.split)
     aemt.add_command(cartridge.cart)
+    aemt.add_command(config.config)
     aemt()
