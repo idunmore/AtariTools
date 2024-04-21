@@ -6,6 +6,7 @@
 
 # Native Python Modules
 import pathlib
+import shutil
 from typing import Self
 
 # 3rd Party/External Modules
@@ -23,9 +24,21 @@ SILENT = 0
 PROGRESS = 1
 VERBOSE = 2
 
+# File Constants
+TARGET_PATTERN = '*.*'
+TARGET_PATTERN_RECR = '**/*'
+CFG_EXTENSION = '.cfg'
+
 # THE400 Mini CONFIG Constants
 
 EOL = ';'
+KEY_VALUE_SEPARATOR = '='
+
+# Atari Media File Extensions
+MEDIA_EXTENSIONS = ['atr', 'atx', 'xfd', 'dcm', 'com', 'exe', 'xex', 'cas',
+                    'car', 'crt', 'rom', 'bin', 'a52']
+FIRST_CARTRIDGE_TYPE = 1
+LAST_CARTRIDGE_TYPE = 70
 
 # Emulator Keys & Defaults
 KEY_EMULATOR_PREFIX = 'emulator_'
@@ -103,7 +116,7 @@ def config():
 @click.argument('filename', type=click.File('w'), default='-')
 def create(filename, model: str, basic: bool, video_std: str, force_pal: bool,
 	artefact: str, start: int, height: int, width: int):
-    '''Creates template .cfg files for Atari THE400 Mini.'''
+    '''Creates .cfg files for Atari THE400 Mini.'''
     # Build the configuration file.
     configuration = build_config(model, basic, video_std, force_pal, artefact,
        start, height, width)
@@ -116,11 +129,52 @@ def create(filename, model: str, basic: bool, video_std: str, force_pal: bool,
     exit(SUCCESS)    
 
 @config.command()
+@click.option('-o', '--overwrite', is_flag=True, default=False,
+        help='Overwrite existing .cfg files')
+@click.option('-r', '--recurse', is_flag=True, default=False,
+    help='Recursively process all files in target directory')
 @click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
     default='1', show_default=True, help='Status/progress reporting verbosity')
-def apply(verbosity: str):
+@click.argument('config_file', type=click.Path(exists=True, dir_okay=False))
+@click.argument('dest_path', type=click.Path(exists=True, dir_okay=True))
+def apply(overwrite: bool, recurse: bool, verbosity: str,
+          config_file: str, dest_path: str):
     '''Applies specified .cfg template to THE400 Mini USB Media games.'''
-    pass
+    target_files = build_target_file_list(pathlib.Path(dest_path), recurse)
+
+    if int(verbosity) == PROGRESS:
+        # ... showing a progress bar.
+        with click.progressbar(target_files, label='Applying config') as bar:
+            for file in bar:
+                apply_config(config_file, file, overwrite, verbosity)        
+    else:
+        for file in target_files:
+            apply_config(config_file, file, overwrite, verbosity)           
+ 
+    exit(SUCCESS)
+
+@config.command()
+@click.option('-r', '--recurse', is_flag=True, default=False,
+    help='Recursively process all files in target directory')
+@click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
+    default='1', show_default=True, help='Status/progress reporting verbosity')
+@click.argument('update_file', type=click.Path(exists=True, dir_okay=False))
+@click.argument('dest_path', type=click.Path(exists=True, dir_okay=True))
+def update(recurse: bool, verbosity: str, update_file: str, dest_path: str):
+    # u_list = ['emulator_machine = "400-ntsc"', 'emulator_artefact = 0', 'emulator_force_pal = false', 'bob = 1']
+    # t_list = ['emulator_machine = "800-ntsc-basic"', 'emulator_artefact = 0', 'emulator_force_pal = false']
+
+    # update_config(u_list, t_list)
+
+    # for item in t_list:
+    #     print(item)
+
+    # print(get_extensions())
+    #files = build_target_file_list(pathlib.Path('/Users/idunmore/Temp/carts'), True)
+    files = build_target_file_list(pathlib.Path('/Users/idunmore/Temp/carts/'), False)
+    for file in files:
+        print(file)
+
 
 # Configuration File Functions
 def build_config(model: str, basic: bool, video_std: str, force_pal: bool,
@@ -181,6 +235,76 @@ def add_controller_mappings(config: list, model: str):
             config.append(line)
 
     return config
+
+def update_config(config_updates: list, target_config: list):
+    '''Updates the specified configuration file with the new settings.'''
+    # Iterate through the new configuration settings   
+    for update_item in config_updates:
+        item_found = False
+        update_key = get_config_item_key(update_item)
+        for target_item in target_config:
+            # Update the existing config item if it exists ...
+            if update_key == get_config_item_key(target_item):               
+                target_config[target_config.index(target_item)] = update_item              
+                item_found = True
+                break           
+        
+        if not item_found:
+            # ... otherwise add the new config item.            
+            target_config.append(update_item)  
+            
+def get_config_item_key(config_item: str) -> str:
+    '''Extracts the key from a configuration line item.'''
+    return config_item.split(KEY_VALUE_SEPARATOR)[0].strip()
+
+def get_extensions() -> list:
+    '''Returns the list of supported Atari media file extensions.'''
+    # Start with the default list of extensions ...
+    extensions = MEDIA_EXTENSIONS
+    # ... and add all the specific cartridge extensions:
+    for number in range(FIRST_CARTRIDGE_TYPE, LAST_CARTRIDGE_TYPE + 1):
+        extensions.append(f'c{number:02d}')
+
+    return extensions
+
+def build_target_file_list(dest_path: pathlib.Path,
+                           recurse: bool = False) -> list:
+    # Anything files with extensions not in this list are excluded
+    extensions = get_extensions()
+    target_files = []
+    # Single file?
+    if dest_path.is_file() and dest_path.suffix[1:].lower() in extensions:
+        # Add file, replacing the extension with '.cfg'
+        target_files.append(dest_path.with_suffix(CFG_EXTENSION))
+    
+    # Directory?
+    if dest_path.is_dir():
+        # Recurse if specied ...
+        pattern = TARGET_PATTERN_RECR if recurse else TARGET_PATTERN  
+        # ... and find all files ...      
+        candidate_files = list(dest_path.glob(pattern))  
+        # ... adding only those with valid extensions, but replacing the
+        # extension with '.cfg'      
+        target_files = [file.with_suffix(CFG_EXTENSION)
+                        for file in candidate_files
+                        if (file.is_file() and
+                            file.suffix[1:].lower() in extensions)]
+    
+    return target_files
+
+def apply_config(config_file: str, target_file: pathlib.Path, overwrite: bool,
+                 verbosity: str):
+    '''Applies the specified configuration file to the target file.'''
+    if not target_file.exists() or overwrite:
+        shutil.copy(config_file, target_file)
+        echo_v(f'Applied {pathlib.Path(config_file)} to: {target_file}',
+                int(verbosity))
+
+# GENERAL Utility Functions
+
+def echo_v(message: str, verbosity: int):
+    if verbosity == VERBOSE:
+        click.echo(message)	
 
 # Run!
 if __name__ == '__main__':
