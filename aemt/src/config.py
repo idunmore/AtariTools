@@ -143,7 +143,7 @@ def create(filename, model: str, basic: bool, video_std: str, force_pal: bool,
 @click.argument('dest_path', type=click.Path(exists=True, dir_okay=True))
 def apply(overwrite: bool, recurse: bool, verbosity: str,
           config_file: str, dest_path: str):
-    '''Applies specified .cfg template to THE400 Mini USB Media games.'''
+    '''Applies specified .cfg file to THE400 Mini USB Media games.'''
     extensions = get_extensions()
     target_files = build_target_file_list(pathlib.Path(dest_path), extensions,
                                           recurse)
@@ -167,6 +167,7 @@ def apply(overwrite: bool, recurse: bool, verbosity: str,
 @click.argument('update_file', type=click.Path(exists=True, dir_okay=False))
 @click.argument('dest_path', type=click.Path(exists=True, dir_okay=True))
 def update(recurse: bool, verbosity: str, update_file: str, dest_path: str):
+    '''Updates .cfg files with settings from specified update file.'''
     # Load the update file, ONCE:
     update_file_data = load_config_data(pathlib.Path(update_file))
 

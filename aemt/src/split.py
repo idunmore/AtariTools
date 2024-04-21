@@ -344,8 +344,7 @@ class MaxFileSplit(Splitter):
 @click.group()
 @click.version_option('0.0.0.1')
 def split():
-    '''Moves files to organized folder structures, with an optionally limited
-	    number of files per folder.'''
+    '''Moves files to organized folder structures.'''
     pass
 
 @split.command('alpha')

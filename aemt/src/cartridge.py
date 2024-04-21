@@ -271,7 +271,7 @@ def list_types():
 @click.argument('source_path', 
     type=click.Path(exists=True, file_okay=True, dir_okay=True))
 def id(csv: bool, header: bool, recurse: bool, verbose: bool, source_path: str):
-    '''Identifies the cartridge type and verifies the header and data.
+    '''Identifies the cartridge type and verifies header and data.
 
     \b
       SOURCE_PATH may be a directory or a file; if a directory *only* .car files
