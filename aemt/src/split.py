@@ -342,7 +342,7 @@ class MaxFileSplit(Splitter):
 # Command Line Interface
 
 @click.group()
-@click.version_option('0.0.0.1')
+@click.version_option('0.1.0.0')
 def split():
     '''Moves files to organized folder structures.'''
     pass

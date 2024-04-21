@@ -94,7 +94,7 @@ DEFAULT_DISPLAY_WIDTH = 320
 # Command Line Interface
 
 @click.group()
-@click.version_option('0.0.0.1')
+@click.version_option('0.1.0.0')
 def config():
     '''Creates and updates .CFG files for THE400 Mini USB Media games.'''
     pass
