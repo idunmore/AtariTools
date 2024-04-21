@@ -36,7 +36,7 @@ KEY_VALUE_SEPARATOR = '='
 
 # Atari Media File Extensions
 MEDIA_EXTENSIONS = ['atr', 'atx', 'xfd', 'dcm', 'com', 'exe', 'xex', 'cas',
-                    'car', 'crt', 'rom', 'bin', 'a52']
+                    'car', 'crt', 'rom', 'bin', 'a52', 'm3u']
 FIRST_CARTRIDGE_TYPE = 1
 LAST_CARTRIDGE_TYPE = 70
 
