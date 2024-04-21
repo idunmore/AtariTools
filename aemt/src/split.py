@@ -350,18 +350,14 @@ def split():
 @split.command('alpha')
 @click.option('-c', '--copy', is_flag=True, default=False,
     help= f'Copies files to new partitions (else does nothing)')
-@click.option('-d', '--delete', is_flag=True, default=False,
-    help= 'Deletes original files after copying them (move)')
 @click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
     default='1', show_default=True, help='Status/progress reporting verbosity')
 @click.argument('source_path', default='./',
     type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.argument('dest_path', default='./',
     type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def alpha(copy: bool, delete: bool, verbosity: str, source_path: str,
-    dest_path: str) -> int:
-    '''Splits source files into smaller, alphabetic/numeric folders.'''
-    
+def alpha(copy: bool, verbosity: str, source_path: str, dest_path: str) -> int:
+    '''Splits source files into smaller, alphabetic/numeric folders.'''    
     # Sanity check input
     validate_paths(source_path, dest_path)
 
@@ -372,8 +368,7 @@ def alpha(copy: bool, delete: bool, verbosity: str, source_path: str,
     # ... get the split folder/filer structure ...
     folders = splitter.split()
     # ... and then process the files:
-    process_splits(folders, pathlib.Path(dest_path), copy, delete,
-        int(verbosity))
+    process_splits(folders, pathlib.Path(dest_path), copy, int(verbosity))
 
 @split.command('band')
 @click.option('-c', '--copy', is_flag=True, default=False,
@@ -446,7 +441,7 @@ def max(copy: bool, delete: bool,	group: bool, max_files: int,
    
 # Splitter Processing Functions
 def process_splits(folders: Folders, dest_path: pathlib.Path,
-    copy: bool, delete: bool, verbosity: int):
+    copy: bool, verbosity: int):
     '''Processes Folders and splits the files based on its contents.'''
 
     # Iterate all folders ...
@@ -454,11 +449,11 @@ def process_splits(folders: Folders, dest_path: pathlib.Path,
         # ... showing a progress bar.
         with click.progressbar(folders, label='Processing folders') as bar:
             for folder in bar:
-                process_folder(folder, dest_path, copy, delete, verbosity)
+                process_folder(folder, dest_path, copy, verbosity)
     else:
         # ... no progress bar; verbosity sets silent or file-by-file logging
         for folder in folders:
-            process_folder(folder, dest_path, copy, delete, verbosity)        
+            process_folder(folder, dest_path, copy, verbosity)        
 
 def process_folder(folder: Folder, dest_path: pathlib.Path, copy: bool,
     delete: bool, verbosity: int):
@@ -476,11 +471,7 @@ def process_folder(folder: Folder, dest_path: pathlib.Path, copy: bool,
         if copy:
             # Only copy files if we're in COPY mode.
             shutil.copy(file, dest_file, follow_symlinks=False)
-            if delete:
-                echo_v(f'Deleting file: {file}', verbosity)
-                #os.remove(file)
-
-
+            
 # GENERAL Utility Functions
 
 def validate_paths(source_path, dest_path):
