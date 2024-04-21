@@ -7,7 +7,6 @@
 # Native Python Modules
 import pathlib
 import shutil
-from typing import Self
 
 # 3rd Party/External Modules
 import click
@@ -27,7 +26,12 @@ VERBOSE = 2
 # File Constants
 TARGET_PATTERN = '*.*'
 TARGET_PATTERN_RECR = '**/*'
-CFG_EXTENSION = '.cfg'
+
+# Suffix and Extension NEED to be different due to the way pathlib works;
+# path.with_suffix() replaces the last suffix with the new one, where
+# path.suffix does NOT return the separating period.
+CFG_SUFFIX = '.cfg'
+CFG_EXTENSION = 'cfg'
 
 # THE400 Mini CONFIG Constants
 
@@ -140,7 +144,9 @@ def create(filename, model: str, basic: bool, video_std: str, force_pal: bool,
 def apply(overwrite: bool, recurse: bool, verbosity: str,
           config_file: str, dest_path: str):
     '''Applies specified .cfg template to THE400 Mini USB Media games.'''
-    target_files = build_target_file_list(pathlib.Path(dest_path), recurse)
+    extensions = get_extensions()
+    target_files = build_target_file_list(pathlib.Path(dest_path), extensions,
+                                          recurse)
 
     if int(verbosity) == PROGRESS:
         # ... showing a progress bar.
@@ -161,20 +167,26 @@ def apply(overwrite: bool, recurse: bool, verbosity: str,
 @click.argument('update_file', type=click.Path(exists=True, dir_okay=False))
 @click.argument('dest_path', type=click.Path(exists=True, dir_okay=True))
 def update(recurse: bool, verbosity: str, update_file: str, dest_path: str):
-    # u_list = ['emulator_machine = "400-ntsc"', 'emulator_artefact = 0', 'emulator_force_pal = false', 'bob = 1']
-    # t_list = ['emulator_machine = "800-ntsc-basic"', 'emulator_artefact = 0', 'emulator_force_pal = false']
+    # Load the update file, ONCE:
+    update_file_data = load_config_data(pathlib.Path(update_file))
 
-    # update_config(u_list, t_list)
+    # Our target files are all files with the .cfg extension    
+    extensions = [CFG_EXTENSION]
+    target_files = build_target_file_list(pathlib.Path(dest_path), extensions,
+                                          recurse)
+    
+    if int(verbosity) == PROGRESS:
+        # ... showing a progress bar.
+        with click.progressbar(target_files, label='Updating config') as bar:
+            for target_file in bar:
+                update_config_file(update_file_data, target_file)        
+    else:
+        for target_file in target_files:
+            update_config_file(update_file_data, target_file)
+            echo_v(f'Updated: {target_file} with: {update_file}',
+                   int(verbosity))      
 
-    # for item in t_list:
-    #     print(item)
-
-    # print(get_extensions())
-    #files = build_target_file_list(pathlib.Path('/Users/idunmore/Temp/carts'), True)
-    files = build_target_file_list(pathlib.Path('/Users/idunmore/Temp/carts/'), False)
-    for file in files:
-        print(file)
-
+    exit(SUCCESS)
 
 # Configuration File Functions
 def build_config(model: str, basic: bool, video_std: str, force_pal: bool,
@@ -267,15 +279,14 @@ def get_extensions() -> list:
 
     return extensions
 
-def build_target_file_list(dest_path: pathlib.Path,
+def build_target_file_list(dest_path: pathlib.Path, extensions: list,
                            recurse: bool = False) -> list:
-    # Anything files with extensions not in this list are excluded
-    extensions = get_extensions()
+    # Anything files with extensions not in this list are excluded    
     target_files = []
     # Single file?
     if dest_path.is_file() and dest_path.suffix[1:].lower() in extensions:
         # Add file, replacing the extension with '.cfg'
-        target_files.append(dest_path.with_suffix(CFG_EXTENSION))
+        target_files.append(dest_path.with_suffix(CFG_SUFFIX))
     
     # Directory?
     if dest_path.is_dir():
@@ -285,7 +296,7 @@ def build_target_file_list(dest_path: pathlib.Path,
         candidate_files = list(dest_path.glob(pattern))  
         # ... adding only those with valid extensions, but replacing the
         # extension with '.cfg'      
-        target_files = [file.with_suffix(CFG_EXTENSION)
+        target_files = [file.with_suffix(CFG_SUFFIX)
                         for file in candidate_files
                         if (file.is_file() and
                             file.suffix[1:].lower() in extensions)]
@@ -299,6 +310,22 @@ def apply_config(config_file: str, target_file: pathlib.Path, overwrite: bool,
         shutil.copy(config_file, target_file)
         echo_v(f'Applied {pathlib.Path(config_file)} to: {target_file}',
                 int(verbosity))
+
+def load_config_data(update_file: pathlib.Path) -> list:
+    '''Loads the specified update file into a list of configuration items.'''    
+    with open(update_file, 'r') as file:
+        lines = [line.rstrip() for line in file]
+    return lines
+
+def update_config_file(update_file: list, target_file: pathlib.Path):
+    '''Updates the specified configuration file with the new settings.'''
+    target_config = load_config_data(target_file)
+    # Update the target file with the new settings
+    update_config(update_file, target_config)
+    # Write the updated target file
+    with open(target_file, 'w') as file:
+        for line in target_config:
+            file.write(line + '\n')
 
 # GENERAL Utility Functions
 
