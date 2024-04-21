@@ -1,72 +1,98 @@
-Usage:
+[A]tari [E]ight-bit [M]ulti-[T]ool - aemt.py
 
-  split - (was "partition")
+  This is a command-line tool, intended to provide some "quality of life"
+  improvements to managing large game/program libraries, on USB Media, for
+  the "Atari THE400 Mini" (with utilities for other Atari 8-bit emulators).
 
-  Options:
+  Current functionality includes:
 
-  	-s, --scheme 	[simple | max_files | bands]
-  	-f, --force 	flag - forces max files per folder, turning off "grouping"
-  	-v, --verbose  [silent | progress | log], or just 0-2
+	* Moving files, in bulk, to organized folder structures - with the ability
+	  to control how the organization is done and to limit the number of files
+	  per folder (to avoid exceeding "THE400 Minis" 255 files-per-folder limit).
 
-<--[ CLI STRUCTURE ]-->
+	* Creating, applying, and updating .cfg files automatically, WITHOUT having
+	  to set them individually, one game at a time, from within "THE400 Mini's"
+	  file browser.
 
-# Commands: #
+	* Identify and validate CARTRIDGE files (".car" and ".c01" to ".c70"),
+	  including decoding the header, showing the stored ROM data checksum and
+	  computing the actual checksum of the contained ROM data.
 
-	? Does it make sense to have seperate commands, with dedicated options,
-	  for each of the different splitting "schemes"?
-	  	 
-		 - This would be instead of using a "--scheme" option:
+  Only the ".cfg" file functionality is specific to "THE400 Mini"; the other
+  functions can be used with any Atari 8-bit emulators/systems.
 
-		 	Instead of:
-			  
-			  amet.py split --scheme [simple|max|bands]
+## Coming Features/Functions: ##
 
-			It would be:
+  * The ability to CREATE .car (etc.) format files from RAW binary ROM dumps.
 
-			  amet.py split ...
-			  amet.py partition ...
-			  amet.py band ...
+  * .ATR (etc.) identification and verification.
 
-		- Would allow each "scheme" to have its own, non-colliding, OPTIONS:
+  * Image "fingerprinting" - which will create unique "fingerprints" that
+    PRECISELY identify a file, version, origin, format and so on.
+	
+	The goal is that it becomes easy, and reliable, to know what version of a
+	file you have without relying on the filename and various, complex,
+	unreliable,	conventions.
 
-			* amet.py split (NO UNIQUE OPTIONS)
-			* amet.py partition -g -max_files 50
-			* amet.py bands -b "0-9,A-E,F-Z"
+	When done, this will feed an open, online, database, against which you
+	can cross-reference the files you HAVE, as well as obtain the fingerprints
+	of the versions you might be looking for.
 
-<--[ TODOS ]-->
+	(Note: Tthis feature is not limited to "THE400 Mini" or Atari 8-bit
+	platforms, and it is my intent to build it in a fashion that'll work for
+	any game or program image file, regardless of platform.)
 
-- TODO: Can both START and END PREFIXES be handled in a single pass?
-- TODO: Bands can only start and end with a single character; consider making
-		it possible to use ranges like "AS-AT", not just "A-F" etc.
+## Technical/Implementation Notes: ##
 
-<--[ DESIGN & BEHAVIOR NOTEPAD ]-->
+  * This is currently written in Python (3.12.2).
 
-# Class Structures: #
+    Distributing Python applications is a little fussy, and can be a challenge
+	for those not used to using them.  If there is sufficient interest, I may
+	create a .NET, Java or RUST version that can be distributed and used more
+	conventionally.
 
-	Folder = One Folder
+  * Code largely follows PEP-8, though I make occaisional exceptions (mostly to
+    line-length) where it IMPROVES readability.
 
-		? Should it be able to create its own folder name based on its content?
-		? Should it be given a name by the Splitter?
+  * It has only been tested on macOS; though there is nothing specific to what
+    it does that should cause issues on Linux or Windows.
 
-	Folders = All Folders (Collection of Folder)
+  * Dependencies are in the "requirements.txt" file.  As of now there is only
+    ONE; which is the "click" module used to implement the rich CLI.
 
-		* This is just a representation/container.
-		! It is created by the Splitter.
-	 
-# Splitters #
+  * There is one overall program, "aemt.py", within which mutliple commands and
+    sub-commands are available.
 
-  * [DONE] Simple by Folder (0-9, A, B, C ...)
+	The individual commands are created in a way which allows you to use them
+	DIRECTLY as if they were their own, self-contained, tools.  So you can use:
 
-  * Max Files per Folder (dynamic folder names, 0-9, A-D, E-Er, Es-Ez)
-  	  - Has a "Preserve Name Groups" option, which can reduce the size of a
-  	    group to avoid splitting groups across prefix boundaries
+	  aemt.py split ...
 
-  * Bands is pre-determined name groups, with no limit to # files (0-9, A-E, etc.)
+	or:
 
-? Questions ?
+	  split.py ...
 
-	? Is there value in multi-tierd splitting (S, contains SAA, SBA, STA etc.)?
+	See "Usage", below, for more information.
 
-	  	- Is that preferable to tyring to automatically do E-G?
-	  	- Is it simpler?
-	  	- Is the second part of the folder name needed in this case?
+## Usage: ##
+
+Usage: aemt.py [OPTIONS] COMMAND [ARGS]...
+
+  [A]tari [E]ight-bit [M]ulti-[T]ool
+
+      Moves files to organized folder structures, with an optionally
+      limited number of files per folder.
+
+      Creates, applies and updates .cfg files for Atari THE400 Mini
+      games on USB media.
+
+      Identifies and verifies Atari 8-bit cartridge images.
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  cart    Identifies and validates Atari 8-bit cartridges.
+  config  Creates and updates .CFG files for THE400 Mini USB Media games.
+  split   Moves files to organized folder structures.
