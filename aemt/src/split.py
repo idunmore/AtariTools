@@ -375,8 +375,6 @@ def alpha(copy: bool, verbosity: str, source_path: str, dest_path: str) -> int:
 @split.command('band')
 @click.option('-c', '--copy', is_flag=True, default=False,
     help= f'Copies files to new partitions (else does nothing)')
-@click.option('-d', '--delete', is_flag=True, default=False,
-    help= 'Deletes original files after copying them (move)')
 @click.option('-v', '--verbosity', type=click.Choice(['0', '1', '2']),
     default='1', show_default=True, help='Status/progress reporting verbosity')
 @click.option('-b', '--bands', default='0-9,a-e,f-j,k-o,p-t,u-z',
@@ -385,7 +383,7 @@ def alpha(copy: bool, verbosity: str, source_path: str, dest_path: str) -> int:
     type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.argument('dest_path', default='./',
     type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def band(copy: bool, delete: bool, verbosity: str, bands: str,
+def band(copy: bool, verbosity: str, bands: str,
 	source_path: str, dest_path: str):
     '''Splits source files into smaller, "bands" (e.g., 0-9, A-E etc.).'''
     
@@ -399,14 +397,11 @@ def band(copy: bool, delete: bool, verbosity: str, bands: str,
     bands = bands.replace(' ', '')
     folders = splitter.split(list(bands.split(BAND_SEPARATOR)))
     # ... and then process the files:
-    process_splits(folders, pathlib.Path(dest_path), copy, delete,
-        int(verbosity))   
+    process_splits(folders, pathlib.Path(dest_path), copy, int(verbosity))   
 
 @split.command('max')
 @click.option('-c', '--copy', is_flag=True, default=False,
     help= f'Copies files to new partitions (else does nothing)')
-@click.option('-d', '--delete', is_flag=True, default=False,
-    help= 'Deletes original files after copying them (move)')
 @click.option('-g', '--group', is_flag=True, default=DEFAULT_PRESERVE_GROUPING,
     help='Groups files by like prefixes')
 @click.option('-m', '--max_files', type=int, show_default=True,
@@ -418,8 +413,8 @@ def band(copy: bool, delete: bool, verbosity: str, bands: str,
     type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.argument('dest_path', default='./',
     type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def max(copy: bool, delete: bool,	group: bool, max_files: int,
-    verbosity: str,	source_path: str, dest_path: str) -> int:
+def max(copy: bool, group: bool, max_files: int, verbosity: str,
+        source_path: str, dest_path: str) -> int:
     '''Splits source files into folders, with a max # of files each.
         Optionally, tries to group files with like-prefixes together
         (may result in fewer than the max # of files per folder).'''
@@ -438,8 +433,7 @@ def max(copy: bool, delete: bool,	group: bool, max_files: int,
     # ... get the split folder/filer structure ...       
     folders = splitter.split(max_files, group)
     # ... and then process the files:
-    process_splits(folders, pathlib.Path(dest_path), copy, delete,
-        int(verbosity))
+    process_splits(folders, pathlib.Path(dest_path), copy, int(verbosity))
    
 # Splitter Processing Functions
 def process_splits(folders: Folders, dest_path: pathlib.Path,
@@ -458,7 +452,7 @@ def process_splits(folders: Folders, dest_path: pathlib.Path,
             process_folder(folder, dest_path, copy, verbosity)        
 
 def process_folder(folder: Folder, dest_path: pathlib.Path, copy: bool,
-    delete: bool, verbosity: int):
+    verbosity: int):
     '''Processes a single folder, copying/moving its files to the destination.'''
 
     folder_path = dest_path / folder.name    
