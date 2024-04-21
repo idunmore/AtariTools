@@ -1,3 +1,5 @@
+#!python3
+
 # split.py - Split files into folders, based on their names.
 #
 # Copyright(C) 2024, Ian Michael Dunmore

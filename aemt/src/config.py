@@ -1,3 +1,5 @@
+#!python3
+
 # config.py - Atari THE400 Mini Configuration Utility & Functions
 #
 # Copyright(C) 2024, Ian Michael Dunmore

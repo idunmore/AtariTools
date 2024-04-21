@@ -1,3 +1,5 @@
+#!python3
+
 # AEMT.py - [A]tari [E]ight-bit [M]ulti-[T]ool
 #
 # Copyright(C) 2024, Ian Michael Dunmore
