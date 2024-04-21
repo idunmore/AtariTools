@@ -31,11 +31,14 @@ VERBOSE = 2
 def aemt():
     '''[A]tari [E]ight-bit [M]ulti-[T]ool
 
-            Moves files to organized folder structures, with an optionally
-            limited	number of files per folder.
-
-            Fingerprints game images, identifies image file types and creates
-            .cfg files for Atari THE400 Mini games on USB media.'''
+                Moves files to organized folder structures, with an optionally
+                limited number of files per folder.
+            
+            \b
+                Creates, applies and updates .cfg files for Atari THE400 Mini
+                games on USB media.
+            \b
+                Identifies and verifies Atari 8-bit cartridge images.'''
     pass
 
 # GENERAL Utility Functions
