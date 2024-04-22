@@ -54,6 +54,14 @@ CHECKSUM_OFFSET = 8
 CHECKSUM_LENGTH = 4
 IMAGE_OFFSET = 16
 
+# Cartridge (In)validity Reasons
+INVALID_SIGNATURE = 'Invalid signature'
+INVALID_TYPE = 'Invalid or unknown cartridge type'
+INVALID_CHECKSUM = 'Header checksum mismatch with cartridge'
+INVALID_SIZE = 'Invalid cartridge size'
+INVALID_HEADER_SIZE = 'Invalid cartridge header size; expected'
+VALID = 'Valid'
+
 # Format Constants
 CSV_SEPARATOR = ','
 CSV_QUOTE = '"'
@@ -83,12 +91,12 @@ class CartridgeType:
         machine: Machine, description: str):        
 
         if type < FIRST_CARTRIDGE_TYPE or type > LAST_CARTRIDGE_TYPE:
-            raise ValueError(f'Invalid cartridge Type: {type}')
+            raise ValueError(f'{INVALID_TYPE}: {type}')
         self._type = type
 
         if (size_kilobytes > BYTES_PER_KILOBYTE and
             size_kilobytes % BYTES_PER_KILOBYTE != 0):
-            raise ValueError(f'Invalid cartridge size: {size_kilobytes}')        
+            raise ValueError(f'{INVALID_SIZE}: {size_kilobytes}')        
         self._size_kilobytes = size_kilobytes
 
         self._machine = machine
@@ -188,7 +196,7 @@ class CartridgeHeader:
     def __init__(self: Self, bytes: bytes):
         if (len(bytes)) < CART_HEADER_SIZE:
             raise ValueError(
-                f'Invalid cartridge header size; expected: {CART_HEADER_SIZE} '
+                f'{INVALID_HEADER_SIZE}: {CART_HEADER_SIZE} '
                 f'bytes, got: {len(bytes)}')
         self._raw_bytes = bytes
         self._invalid_reason = None
@@ -213,21 +221,24 @@ class CartridgeHeader:
     
     @property
     def description(self: Self) -> str:
-        return cart_types[self.type].description
+        if self.type in cart_types:
+            return cart_types[self.type].description
+        else:
+            return INVALID_TYPE
     
     @property
     def is_valid(self: Self) -> bool:
         if self.signature != CART_PREAMBLE:
-            self._invalid_reason = 'Invalid signature'
+            self._invalid_reason = INVALID_SIGNATURE
             return False
         if self.type not in cart_types:
-            self._invalid_reason = 'Invalid cartridge type'
+            self._invalid_reason = INVALID_TYPE
             return False
         if self.checksum != compute_checksum(self._raw_bytes[IMAGE_OFFSET:]):
-            self._invalid_reason = 'Header checksum mismatch with cartridge'
+            self._invalid_reason = INVALID_CHECKSUM
             return False
         
-        self._invalid_reason = 'Valid'
+        self._invalid_reason = VALID
         return True
     
     @property
@@ -246,7 +257,7 @@ def compute_checksum(bytes: bytes) -> int:
     return result
 
 @click.group()
-@click.version_option('0.1.0.0')
+@click.version_option('0.1.1.0')
 def cart():
     '''Identifies and validates Atari 8-bit cartridges.'''
     pass
