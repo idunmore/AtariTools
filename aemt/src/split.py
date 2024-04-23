@@ -481,7 +481,10 @@ def validate_paths(source_path, dest_path):
 def build_source_file_list(source_path: str) -> list:
     '''Builds the raw list of source files to be partitioned.'''
     source_path = pathlib.Path(source_path)
-    source_files = list(source_path.glob(SOURCE_FILE_PATTERN))
+    # Don't include directories in the list of FILEs to move, as each file will
+    # include it's full path anyway.
+    source_files = [file for file in list(source_path.glob(SOURCE_FILE_PATTERN))
+                    if not file.is_dir()]
     # Sort the files, by name, as they will be grouped alphaetically.
     source_files.sort(key=lambda x : x.name)
     return source_files 
