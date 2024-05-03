@@ -73,6 +73,9 @@ SIG_START ='['
 SIG_END=']'
 CSV_TYPE_WIDTH = 1
 TYPE_WIDTH = 2
+CSV_DESCRIPTION_WIDTH = 1
+DESCRIPTION_WIDTH = 46
+
 
 # Machines Types
 class Machine(enum.Enum):
@@ -332,14 +335,15 @@ def id_cartridge(file: pathlib.Path, csv: bool, verbose: bool):
     sep, quote = (CSV_SEPARATOR, CSV_QUOTE) if csv else (SEPARATOR, QUOTE)
     sig_start, sig_end = ((CSV_SIG_START, CSV_SIG_END) if csv
                            else (SIG_START, SIG_END))
-    type_width = CSV_TYPE_WIDTH if csv else TYPE_WIDTH
+    cart_type_width = CSV_TYPE_WIDTH if csv else TYPE_WIDTH
+    cart_description_width = CSV_DESCRIPTION_WIDTH if csv else DESCRIPTION_WIDTH
     
     # Build the base output ...    
     item = (f'{sig_start}{header.signature}{sig_end}{sep}'
-            f'{header.type:{type_width}}{sep}0x{header.checksum:08x}{sep}'
+            f'{header.type:{cart_type_width}}{sep}0x{header.checksum:08x}{sep}'
             f'0x{actual_checksum:08x}{sep}'            
             f'{header.is_valid}{sep}'
-            f'{quote}{header.description}{quote}')
+            f'{quote}{header.description:{cart_description_width}}{quote}')
     
     # ... and add the verbose elements if requested
     if verbose:
