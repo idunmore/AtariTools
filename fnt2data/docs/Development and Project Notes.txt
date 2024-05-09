@@ -1,6 +1,6 @@
 This is a command-line tool for converting Atari 8-bit binary .FNT files into "data" statements for various Atari 8-bit/6502 Assemblers and programming languages (e.g. Atari BASIC).
 
-.FNT files are comprised of 128 character definitions, each 8-bits wide by 8-scan-lines tall, and beginning with the 8-bit bitmap (byte) for the top most scan-line of character 0. The 9th byte (index 8) in the .FNT file would be the first scan-line for the 2nd character, etc.
+.FNT files are comprised of 128 character definitions, each 8-bits wide by 8-scan-lines tall, and beginning with the 8-bit bitmap (byte) for the top-most scan-line of character 0. The 9th byte (index 8) in the .FNT file would be the first scan-line for the 2nd character, etc.
 
 Output is a series of "data" statements, such as (data for first 2 characters):
 
@@ -16,3 +16,52 @@ Output is a series of "data" statements, such as (data for first 2 characters):
     * Configurable data-type output ($HEX, HEX, DEC, %Binary)
 
     * Configurable number of characters per line.
+
+## Prototype Commands ##
+
+  -t --target [Atari | ATASM | MAC65 | MADS | BASIC]
+  -f --format [Binary | Decimal | Hex]
+  -s --separator [comma | space]
+  -d --directive [.BYTE, .HE, dta, DATA]
+
+  If -t == BASIC, separator = comma, format = decimal, directive = DATA
+  
+
+## DATA Command Format Notes ##
+
+Atari Assembler/Editor Cartridge:
+
+  .BYTE
+
+  Value Prefixes:
+
+    No Prefix - Decimal
+    $ - Hex
+
+  Comma-separated
+
+ATASM (and MAC/65):
+
+  .BYTE
+
+  Value prefixes:
+
+    No Prefix - Decimal
+    $ - Hex
+    ~ - Binary
+
+  Comma-separated.
+
+MADS:
+
+  .BYTE
+  .HE
+  dta
+
+  Value Prefixes:
+
+    No Prefix - Decimal
+    $ - Hex
+    % - Binary
+
+  Comma OR Space separated

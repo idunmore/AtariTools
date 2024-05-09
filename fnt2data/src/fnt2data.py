@@ -1,6 +1,6 @@
 #!python3
 
-# fn2data.py - Font to Data Converter
+# fnt2data.py - Font to Data Converter
 #
 # Copyright(C) 2024, Ian Michael Dunmore
 #
