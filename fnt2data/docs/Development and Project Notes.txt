@@ -22,7 +22,7 @@ Output is a series of "data" statements, such as (data for first 2 characters):
   show:
 
     -b --boxes - Shows bounding boxes around characters (default OFF)
-    -c --chars_per_line - 1, 2, 4, 8, 16 - Number of chars per line (default 8)
+    -c --chars_per_line - 1, 8, 16 - Number of chars per line (default 8)
 
     FILENAME
 
@@ -36,6 +36,7 @@ Output is a series of "data" statements, such as (data for first 2 characters):
 
     If -t == BASIC, separator = comma, format = decimal, directive = DATA
   
+    !! If "Atari" Assembler Editor, or BASIC, the output needs line numbers. !!
 
 ## DATA Command Format Notes ##
 
