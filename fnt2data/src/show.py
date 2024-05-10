@@ -37,7 +37,7 @@ CHAR_BIT_WIDTH = 8
         type=click.Choice(['1', '8', '16']), default='8',
         help='Number of characters to display per line.')
 @click.argument('filename',
-	type=click.Path(exists=True, file_okay=True, dir_okay=False), default='')
+	type=click.Path(exists=True, file_okay=True, dir_okay=False))
 def show(border: bool, chars_per_line: int, filename: str):
     '''Graphically displays the all characters defined in the .FNT file.'''
     with open(filename, 'rb') as f:
