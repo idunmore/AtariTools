@@ -11,6 +11,7 @@ import click
 
 # Local Application Modules
 import show
+import convert
 
 # Command Line Interface
 @click.group()
@@ -22,4 +23,5 @@ def fnt2data():
 # Run!
 if __name__ == '__main__':
     fnt2data.add_command(show.show)
+    fnt2data.add_command(convert.convert)
     fnt2data()

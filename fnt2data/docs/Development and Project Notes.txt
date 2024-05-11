@@ -28,28 +28,18 @@ Output is a series of "data" statements, such as (data for first 2 characters):
 
   convert:
 
-    -t --target [Atari | ATASM | MAC65 | MADS | BASIC]
-    -f --format [Binary | Decimal | Hex]
+    * Will use SUBCOMMANDS to make command lines more logical (no need to have
+      irrelevant options for each format)
+
+    -f --format [BIN | DEC | HEX]
     -s --separator [comma | space]
-    -d --directive [.BYTE, .HE, dta, DATA]
+    -d --directive [.BYTE, .HE, dta]
     -b --bytes_per_line
+    -p --pad - flag, add a space after seperating commas
 
-    If -t == BASIC, separator = comma, format = decimal, directive = DATA
-  
-    !! If "Atari" Assembler Editor, or BASIC, the output needs line numbers. !!
-
+    If directive == HE, automatically omit the $ prefix.
+    
 ## DATA Command Format Notes ##
-
-Atari Assembler/Editor Cartridge:
-
-  .BYTE
-
-  Value Prefixes:
-
-    No Prefix - Decimal
-    $ - Hex
-
-  Comma-separated
 
 ATASM (and MAC/65):
 
