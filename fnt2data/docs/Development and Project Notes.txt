@@ -35,7 +35,6 @@ Output is a series of "data" statements, such as (data for first 2 characters):
     -s --separator [comma | space]
     -d --directive [.BYTE, .HE, dta]
     -b --bytes_per_line
-    -p --pad - flag, add a space after seperating commas
 
     If directive == HE, automatically omit the $ prefix.
     
@@ -52,6 +51,10 @@ ATASM (and MAC/65):
     ~ - Binary
 
   Comma-separated.
+
+  Note, MAC65 is a line-numbered format, and always outputs for the smallest
+  number of lines, rather than allowing the user to set the number of bytes
+  per line.
 
 MADS:
 
