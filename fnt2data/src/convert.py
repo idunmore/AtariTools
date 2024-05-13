@@ -6,9 +6,6 @@
 #
 # License: https://github.com/idunmore/AtariTools/blob/master/LICENSE
 
-# Native Python Modules
-from sys import argv
-
 # 3rd Party/External Modules
 import click
 
