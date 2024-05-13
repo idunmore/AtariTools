@@ -11,6 +11,10 @@ import click
 
 # Constants
 
+# Exit Codes
+ERROR = 1
+SUCCESS = 0
+
 # Character Set Constants
 CHARS_PER_SET = 128
 
@@ -23,18 +27,32 @@ DEFAULT_PREFIX_BINARY = '~'
 # Atari BASIC Constants
 BASIC_MAX_LINE_NUMBER = 32767
 BASIC_MAX_LINE_LENGTH = 120
+BASIC_COMMAND = 'DATA'
 
 # Atari Assembler/Editor Constants
 ATARI_ASM_MAX_LINE_NUMBER = 65535
 ATARI_ASM_MAX_LINE_LENGTH = 106
+ATARI_DIRECTIVE = '.BYTE'
+
+# ATASM Constants
+ATASM_DIRECTIVE = '.BYTE'
+
+# CA65 Constants
+CA65_DIRECTIVE = '.BYTE'
 
 # OSS MAC/65 Assembler/Editor Constants
 MAC65_MAX_LINE_NUMBER = 65535
 MAC65_MAX_LINE_LENGTH = 106
 MAC65_BINARY_PREFIX = DEFAULT_PREFIX_BINARY
+MAC65_DIRECTIVE = '.BYTE'
 
 # MADS Constants
 MADS_BINARY_PREFIX = '%'
+MADS_HE_PREFIX = ''
+MADS_DEFAULT_HE_SEPARATOR = ' '
+MADS_BYTE_DIRECTIVE = '.BYTE'
+MADS_HE_DIRECTIVE = '.HE'
+MADS_DTA_DIRECTIVE = 'DTA'
 
 # Format CONSTANTS
 FORMAT_HEX = 'HEX'
@@ -141,6 +159,51 @@ def atari(line_number: int, increment: int, format: str, font_file: str,
     for l in to_mac65(bytes, line_number, increment, format.upper()):
         dest_file.write(f'{l}\n')   
 
+@convert.command('mads')
+@click.option('-d', '--directive', show_default=True, default='.BYTE',
+    type=click.Choice(['.BYTE', '.HE', 'DTA', 'DTA b']),
+    help='Data Directive or psuedoc-command to generate.')
+@click.option('-b', '--bytes_per_line', show_default=True,
+    type=click.Choice(['1', '8', '16', '32']) , default='16',
+    help='Number of bytes per line.')
+@click.option('-f', '--format', show_default=True, default=FORMAT_HEX,
+    type=click.Choice([FORMAT_HEX, FORMAT_DECIMAL, FORMAT_BINARY],
+    case_sensitive=False), help='Output format for the .BYTE statements.')
+@click.option('-s', '--separator', show_default=True, default=DEFAULT_SEPARATOR,
+    help='Separator between bytes; use " " for spaces or ", " etc.')
+@click.argument('font_file',
+	type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument('dest_file', type=click.File('w'), default='-')
+def mads(directive: str, bytes_per_line: str, format: str, separator: str,
+    font_file: str, dest_file):
+    '''Convert .FNT file to .BYTE/.HE/DTA statements for MADS Assembler.'''
+    # The '.HE' directive is special; it requires un-prefixed HEX values
+    if directive.upper() == '.HE':
+        # Formats other than HEX are not allow for '.HE' directive
+        if format.upper() != FORMAT_HEX:
+            click.echo('.HE directive requires HEX format.')
+            exit(ERROR)
+        # Switch separator to preferred HEX separator if not already set
+        if separator != MADS_DEFAULT_HE_SEPARATOR:
+            click.echo(f'.HE directive prefers {MADS_DEFAULT_HE_SEPARATOR} as '
+                       f'its separator.')
+            separator = MADS_DEFAULT_HE_SEPARATOR
+        # Ensure prefix is empty (the MADS HE PREFIX) for HEX format
+        prefix = MADS_HE_PREFIX
+    else:
+        # For all other directives, the prefix is determined by the format ...
+        prefix = prefix_from_format(format)
+        # ... but use the MADS_BINARY_PREFIX for binary, as it is different
+        # to the other assemblers
+        if prefix == DEFAULT_PREFIX_BINARY:
+            prefix = MADS_BINARY_PREFIX
+
+    f = open(font_file, 'rb')
+    bytes = f.read()
+    for l in to_mads(bytes, directive, int(bytes_per_line), prefix,
+                     format.upper(), separator):
+        dest_file.write(f'{l}\n') 
+
 # Core Functions
 def to_atari_asm(bytes: list, first_line_number: int, increment: int,
     format) -> list:
@@ -149,26 +212,26 @@ def to_atari_asm(bytes: list, first_line_number: int, increment: int,
     prefix = PREFIX_HEX if format == 'HEX' else PREFIX_DECIMAL
     return to_line_numbered_data(bytes, first_line_number, increment,
         ATARI_ASM_MAX_LINE_NUMBER, ATARI_ASM_MAX_LINE_LENGTH,
-        '.BYTE', prefix, format)
+        ATARI_DIRECTIVE, prefix, format)
 
 def to_atasm(bytes: list, bytes_per_line: int, format: str,
     seperator: str) -> list:
     '''Convert the bytes to .BYTE statements for the ATASM Assembler.'''
     prefix = prefix_from_format(format)
-    return to_data(bytes, bytes_per_line, '.BYTE', prefix, format,
+    return to_data(bytes, bytes_per_line, ATASM_DIRECTIVE, prefix, format,
         seperator)
 
 def to_basic(bytes: list, first_line_number: int, increment: int) -> list:
     '''Convert the bytes to line-numbered DATA statements for Atari BASIC.'''
     return to_line_numbered_data(bytes, first_line_number, increment,
-        BASIC_MAX_LINE_NUMBER, BASIC_MAX_LINE_LENGTH, 'DATA',
+        BASIC_MAX_LINE_NUMBER, BASIC_MAX_LINE_LENGTH, BASIC_COMMAND,
         PREFIX_DECIMAL,FORMAT_DECIMAL)
 
 def to_ca65(bytes: list, bytes_per_line: int, format: str,
     seperator: str) -> list:
     '''Convert the bytes to .BYTE statements for the CA65 Assembler.'''
     prefix = prefix_from_format(format)
-    return to_data(bytes, bytes_per_line, '.BYTE', prefix, format,
+    return to_data(bytes, bytes_per_line, CA65_DIRECTIVE, prefix, format,
         seperator)
 
 def to_mac65(bytes: list, first_line_number: int, increment: int,
@@ -177,9 +240,15 @@ def to_mac65(bytes: list, first_line_number: int, increment: int,
     Assembler/Editor.'''
     # Determine data type prefix
     prefix = prefix_from_format(format)
-
     return to_line_numbered_data(bytes, first_line_number, increment,
-        MAC65_MAX_LINE_NUMBER, MAC65_MAX_LINE_LENGTH, '.BYTE', prefix, format)
+        MAC65_MAX_LINE_NUMBER, MAC65_MAX_LINE_LENGTH, MAC65_DIRECTIVE,
+        prefix, format)
+
+def to_mads(bytes: list, directive: str, bytes_per_line: int, prefix: str,
+    format: str, seperator: str) -> list:
+    '''Convert the bytes to .BYTE, .HE, or DTA statements for the MADS Assembler.'''
+    return to_data(bytes, bytes_per_line, directive, prefix, format,
+        seperator)
 
 def to_line_numbered_data(bytes: list, first_line_number: int, increment: int,
     max_line_number: int, max_line_length: int, directive: str, prefix: str,

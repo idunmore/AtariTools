@@ -15,7 +15,7 @@ Output is a series of "data" statements, such as (data for first 2 characters):
 
     * Configurable data-type output ($HEX, HEX, DEC, %Binary)
 
-    * Configurable number of characters per line.
+    * Configurable number of bytes per line.
 
 ## Prototype Commands ##
 
@@ -31,25 +31,10 @@ Output is a series of "data" statements, such as (data for first 2 characters):
     * Will use SUBCOMMANDS to make command lines more logical (no need to have
       irrelevant options for each format)
 
-    -f --format [BIN | DEC | HEX]
-    -s --separator [comma | space]
-    -d --directive [.BYTE, .HE, dta]
-    -b --bytes_per_line
-
-    If directive == HE, automatically omit the $ prefix.
-    
-## DATA Command Format Notes ##
-
-MADS:
-
-  .BYTE
-  .HE
-  dta
-
-  Value Prefixes:
-
-    No Prefix - Decimal
-    $ - Hex
-    % - Binary
-
-  Comma OR Space separated
+      atari - requires line numbers
+      atasm
+      basic - requires line numbers
+      ca65
+      mac65 - requires line numbers
+      mads  - has special options, with a unique command line
+      
