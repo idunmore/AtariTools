@@ -21,6 +21,7 @@ CHARS_PER_SET = 128
 PREFIX_HEX = '$'
 PREFIX_DECIMAL = ''
 DEFAULT_SEPARATOR = ','
+DEFAULT_PREFIX_BINARY = '~'
 
 # Atari BASIC Constants
 BASIC_MAX_LINE_NUMBER = 32767
@@ -33,7 +34,7 @@ ATARI_ASM_MAX_LINE_LENGTH = 106
 # OSS MAC/65 Assembler/Editor Constants
 MAC65_MAX_LINE_NUMBER = 65535
 MAC65_MAX_LINE_LENGTH = 106
-MAC65_BINARY_PREFIX = '~'
+MAC65_BINARY_PREFIX = DEFAULT_PREFIX_BINARY
 
 # MADS Constants
 MADS_BINARY_PREFIX = '%'
@@ -47,7 +48,7 @@ FORMAT_BINARY = 'BIN'
 
 @click.group()
 def convert():
-    '''Convert a .FNT file to data statements for various Assemblers.'''
+    '''Convert .FNT file to data statements for various Assemblers.'''
     pass
 
 @convert.command('atari')
@@ -63,11 +64,31 @@ def convert():
 @click.argument('dest_file', type=click.File('w'), default='-')
 def atari(line_number: int, increment: int, format: str, font_file: str,
     dest_file):
-    '''Convert the .FNT file to .BYTE statements for the Atari Assembler.'''
+    '''Convert .FNT file to .BYTE statements for the Atari Assembler.'''
     f = open(font_file, 'rb')
     bytes = f.read()
     for l in to_atari_asm(bytes, line_number, increment, format.upper()):
-        dest_file.write(f'{l}\n')   
+        dest_file.write(f'{l}\n') 
+
+@convert.command('atasm')
+@click.option('-b', '--bytes_per_line', show_default=True,
+    type=click.Choice(['1', '8', '16', '32']) , default='16',
+    help='Number of bytes per line.')
+@click.option('-f', '--format', show_default=True, default=FORMAT_HEX,
+    type=click.Choice([FORMAT_HEX, FORMAT_DECIMAL, FORMAT_BINARY],
+    case_sensitive=False), help='Output format for the .BYTE statements.')
+@click.option('-s', '--separator', show_default=True, default=DEFAULT_SEPARATOR,
+    help='Separator between bytes; use " " for spaces or ", " etc.')
+@click.argument('font_file',
+	type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument('dest_file', type=click.File('w'), default='-')
+def atasm(bytes_per_line: str, format: str, separator: str,
+    font_file: str, dest_file):
+    '''Convert .FNT file to .BYTE statements for the ATASM Assembler.'''
+    f = open(font_file, 'rb')
+    bytes = f.read()
+    for l in to_atasm(bytes, int(bytes_per_line), format.upper(), separator):
+        dest_file.write(f'{l}\n') 
 
 @convert.command('basic')
 @click.option('-l', '--line_number', show_default=True, type=int, default=1000,
@@ -78,11 +99,31 @@ def atari(line_number: int, increment: int, format: str, font_file: str,
 	type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument('dest_file', type=click.File('w'), default='-')
 def basic(line_number: int, increment: int, font_file: str, dest_file):
-    '''Convert the .FNT file to DATA statements for Atari BASIC.'''
+    '''Convert .FNT file to DATA statements for Atari BASIC.'''
     f = open(font_file, 'rb')
     bytes = f.read()
     for l in to_basic(bytes, line_number, increment):
         dest_file.write(f'{l}\n')
+
+@convert.command('ca65')
+@click.option('-b', '--bytes_per_line', show_default=True,
+    type=click.Choice(['1', '8', '16', '32']) , default='16',
+    help='Number of bytes per line.')
+@click.option('-f', '--format', show_default=True, default=FORMAT_HEX,
+    type=click.Choice([FORMAT_HEX, FORMAT_DECIMAL, FORMAT_BINARY],
+    case_sensitive=False), help='Output format for the .BYTE statements.')
+@click.option('-s', '--separator', show_default=True, default=DEFAULT_SEPARATOR,
+    help='Separator between bytes; use " " for spaces or ", " etc.')
+@click.argument('font_file',
+	type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument('dest_file', type=click.File('w'), default='-')
+def atasm(bytes_per_line: str, format: str, separator: str,
+    font_file: str, dest_file):
+    '''Convert .FNT file to .BYTE statements for the CA65 Assembler.'''
+    f = open(font_file, 'rb')
+    bytes = f.read()
+    for l in to_ca65(bytes, int(bytes_per_line), format.upper(), separator):
+        dest_file.write(f'{l}\n')         
 
 @convert.command('mac65')
 @click.option('-l', '--line_number', show_default=True, type=int, default=1000,
@@ -97,7 +138,7 @@ def basic(line_number: int, increment: int, font_file: str, dest_file):
 @click.argument('dest_file', type=click.File('w'), default='-')
 def atari(line_number: int, increment: int, format: str, font_file: str,
     dest_file):
-    '''Convert the .FNT file to .BYTE statements for the Atari Assembler.'''
+    '''Convert .FNT file to .BYTE statements for the OSS MAC/65 Assembler.'''
     f = open(font_file, 'rb')
     bytes = f.read()
     for l in to_mac65(bytes, line_number, increment, format.upper()):
@@ -113,23 +154,32 @@ def to_atari_asm(bytes: list, first_line_number: int, increment: int,
         ATARI_ASM_MAX_LINE_NUMBER, ATARI_ASM_MAX_LINE_LENGTH,
         '.BYTE', prefix, format)
 
+def to_atasm(bytes: list, bytes_per_line: int, format: str,
+    seperator: str) -> list:
+    '''Convert the bytes to .BYTE statements for the ATASM Assembler.'''
+    prefix = prefix_from_format(format)
+    return to_data(bytes, bytes_per_line, '.BYTE', prefix, format,
+        seperator)
+
 def to_basic(bytes: list, first_line_number: int, increment: int) -> list:
     '''Convert the bytes to line-numbered DATA statements for Atari BASIC.'''
     return to_line_numbered_data(bytes, first_line_number, increment,
         BASIC_MAX_LINE_NUMBER, BASIC_MAX_LINE_LENGTH, 'DATA',
         PREFIX_DECIMAL,FORMAT_DECIMAL)
 
+def to_ca65(bytes: list, bytes_per_line: int, format: str,
+    seperator: str) -> list:
+    '''Convert the bytes to .BYTE statements for the CA65 Assembler.'''
+    prefix = prefix_from_format(format)
+    return to_data(bytes, bytes_per_line, '.BYTE', prefix, format,
+        seperator)
+
 def to_mac65(bytes: list, first_line_number: int, increment: int,
     format) -> list:
     '''Convert the bytes to line-numbered .BYTE statements for the OSS MAC/65
     Assembler/Editor.'''
     # Determine data type prefix
-    if format == FORMAT_BINARY:
-        prefix = MAC65_BINARY_PREFIX
-    elif format == FORMAT_HEX:
-        prefix = PREFIX_HEX
-    else:
-        prefix = PREFIX_DECIMAL
+    prefix = prefix_from_format(format)
 
     return to_line_numbered_data(bytes, first_line_number, increment,
         MAC65_MAX_LINE_NUMBER, MAC65_MAX_LINE_LENGTH, '.BYTE', prefix, format)
@@ -191,6 +241,10 @@ def to_data(bytes: list, bytes_per_line: int, directive: str, prefix: str,
         for byte in bytes_for_line:
             line += formatted_value(byte, prefix, format)
             line += separator
+        
+        # Remove trailing comma, add line to the list and move to next line
+        line = line.rstrip(separator)
+        lines.append(line)
             
     return lines
 
@@ -207,7 +261,18 @@ def formatted_value(byte: int, prefix:str, format: str) -> str:
     else:
         raise ValueError('Invalid format argument.')
     return value
-            
+
+def prefix_from_format(format: str) -> str:
+    '''Return the prefix for the format argument.'''
+    format = format.upper()
+    if format == FORMAT_HEX:
+        return PREFIX_HEX
+    elif format == FORMAT_DECIMAL:
+        return PREFIX_DECIMAL
+    elif format == FORMAT_BINARY:
+        return DEFAULT_PREFIX_BINARY
+    else:
+        raise ValueError('Invalid format argument.')    
 # Run!
 if __name__ == '__main__':
     convert()

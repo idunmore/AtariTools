@@ -40,22 +40,6 @@ Output is a series of "data" statements, such as (data for first 2 characters):
     
 ## DATA Command Format Notes ##
 
-ATASM (and MAC/65):
-
-  .BYTE
-
-  Value prefixes:
-
-    No Prefix - Decimal
-    $ - Hex
-    ~ - Binary
-
-  Comma-separated.
-
-  Note, MAC65 is a line-numbered format, and always outputs for the smallest
-  number of lines, rather than allowing the user to set the number of bytes
-  per line.
-
 MADS:
 
   .BYTE
