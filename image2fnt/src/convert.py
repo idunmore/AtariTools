@@ -1,27 +1,30 @@
 #!python3
 
-# image2fnt.py - Bitmapped Image to Atari 8-bit Font Converter
+# convert.py - Conversion Module for Image to Font Converter
 #
 # Copyright(C) 2024, Ian Michael Dunmore
 #
 # License: https://github.com/idunmore/AtariTools/blob/master/LICENSE
 
+# Native Python Modules
+from sys import argv
+
 # 3rd Party/External Modules
 import click
+from PIL import Image
 
-# Local Application Modules
-import info
-import convert
+# Constants
 
 # Command Line Interface
-@click.group()
-@click.version_option(version='0.1.0')
-def image2fnt():
+
+@click.command('convert')
+def convert():
     '''Converts bitmapped images to Atari 8-bit .FNT files.'''
     pass
 
 # Run!
 if __name__ == '__main__':
-    image2fnt.add_command(info.info) 
-    image2fnt.add_command(convert.convert) 
-    image2fnt()
+    if len(argv) == 1:
+        convert(['--help'])
+    else:
+        convert()
