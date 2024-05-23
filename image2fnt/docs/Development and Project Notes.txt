@@ -1,0 +1,61 @@
+## Planned Features/Functions ##
+
+    * Show pertinent INFO for source images.
+
+    * Convert .PNG and .GIF images to .FNT Files
+
+        * Support both 1:1 and 2:1 pixel aspect ratios.
+
+## Prototype Commands ##
+
+    info:
+
+        filename
+
+            Displays image info, including size, banding, formats and then
+            identifies if file has a PALETTE or not, and dumps either the
+            Palette or the Color Table data to the console.
+
+        OUTPUT:
+
+            Colors are always in RGB format, with uppercase letters and
+            prefixed with $
+
+            For palettes, the Index of each RGB color value is shown.
+
+            "Frequency" is how often that Index or Color Value occurs in the
+            source file.  
+
+    convert:
+
+        -a --aspect_ratio - Pixel aspect ratio [1:1 | 2:1]
+
+        @click.option('-a', '--aspect_ratio', show_default=True, default='1:1',
+	        type=click.Choice(['1:1', '2:1']), help='Pixel aspect ratio.')
+
+        -c --colors - Maps Color Values or Indexs to bit patterns
+
+            - Will NEVER be more than 4 indexes/colors.
+
+            - To simplify, we will ALWAYS assign bit values in the following
+              order:
+
+                %00, %01, %10, %11
+
+            - The value must be a delimited string in the form:
+
+                    -c "$FF99AA,$FFFFFF,$80FF00,$000000" 
+
+                for color values or:
+
+                    -c "#0,#2,#1,#4"
+
+                for index values.
+
+
+
+
+
+            
+
+            
