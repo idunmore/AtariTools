@@ -30,10 +30,7 @@
 
         -a --aspect_ratio - Pixel aspect ratio [1:1 | 2:1]
 
-        @click.option('-a', '--aspect_ratio', show_default=True, default='1:1',
-	        type=click.Choice(['1:1', '2:1']), help='Pixel aspect ratio.')
-
-        -c --colors - Maps Color Values or Indexs to bit patterns
+            -c --colors - Maps Color Values or Indexs to bit patterns
 
             - Will NEVER be more than 4 indexes/colors.
 
@@ -44,7 +41,7 @@
 
             - The value must be a delimited string in the form:
 
-                    -c "$FF99AA,$FFFFFF,$80FF00,$000000" 
+                    -c "FF99AA,FFFFFF,80FF00,000000" 
 
                 for color values or:
 
