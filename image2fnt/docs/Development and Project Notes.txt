@@ -30,29 +30,32 @@
 
         -a --aspect_ratio - Pixel aspect ratio [1:1 | 2:1]
 
-            -c --colors - Maps Color Values or Indexs to bit patterns
+            If 2:1, this means interpret ONE pixel in the SOURCE image as
+            representing a 2-bit wide pixel in the OUTPUT (implies 2 bits
+            per pixel, see below).  
 
-            - Will NEVER be more than 4 indexes/colors.
+        -b --bits_per_pixel - Number of bits per visible pixel 1 or 2.
 
-            - To simplify, we will ALWAYS assign bit values in the following
-              order:
+            Outputs TWO bits per pixel, provided there are at LEAST 4 colors
+            in the SOURCE image.
 
-                %00, %01, %10, %11
+        -c --colors - Maps Color Values or Indexs to bit patterns
 
-            - The value must be a delimited string in the form:
+        - Will NEVER be more than 4 indexes/colors.
 
-                    -c "FF99AA,FFFFFF,80FF00,000000" 
+        - To simplify, we will ALWAYS assign bit values in the following
+            order:
 
-                for color values or:
+            %00, %01, %10, %11
 
-                    -c "#0,#2,#1,#4"
+        - The value must be a delimited string in the form:
 
-                for index values.
+                -c "FF99AA,FFFFFF,80FF00,000000" 
 
+            for color values or:
 
+                -c "#0,#2,#1,#4"
 
-
-
-            
+            for index values.          
 
             
