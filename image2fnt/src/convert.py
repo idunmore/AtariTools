@@ -15,11 +15,15 @@ from PIL import Image
 
 # Constants
 
-SEPARATOR = ','
-BIT_PATTERNS = ['00', '01', '10', '11']
+# Exit Codes
+ERROR = 1
+SUCCESS = 0
 
-# Band and Palette Constants
-RGB_BANDS = 'RGB'
+SEPARATOR = ','
+BIT_PATTERNS = [0b00, 0b01, 0b10, 0b11]
+BYTES_PER_CHARACTER = 8
+EVERY_PIXEL = 1
+EVERY_OTHER_PIXEL = 2
 
 # Color Constants
 MAX_COLORS = 4
@@ -27,7 +31,6 @@ RED_INDEX = 0
 GREEN_INDEX = 1
 BLUE_INDEX = 2
 
-FREQUENCY_INDEX = 0
 COLOR_INDEX = 1
 
 # Command Line Interface
@@ -45,10 +48,88 @@ COLOR_INDEX = 1
     type=click.Path(exists=False, file_okay=True, dir_okay=False))
 def convert(colors: str, aspect_ratio: str, image_file: str, fnt_file: str):
     '''Converts bitmapped images to Atari 8-bit .FNT files.'''
-    image = Image.open(image_file)
-    print(get_bit_mapping(image, colors))
+    try:
+        # Open the source image file.
+        image = Image.open(image_file)
 
-def get_bit_mapping(image: Image, colors: str) -> dict[str, str]:
+        # Setup all the parameters for the conversion.
+        pixels_per_character = get_pixels_per_character(aspect_ratio)
+        bit_mapping = get_bit_mapping(image, colors)   
+        pixel_step = get_pixel_step(len(bit_mapping), pixels_per_character)     
+        width, height = image.size
+
+        # Do the conversion ...
+        output_bytes = do_conversion(image, pixels_per_character, bit_mapping,
+            pixel_step, width, height)
+
+        image.close()
+
+        # ... and write the output to the specified file:
+        with open(fnt_file, 'wb') as output_file:
+            output_file.write(bytes(output_bytes))
+
+        exit(SUCCESS)
+    
+    except Exception as e:
+        print(f'Error: {e}')
+        exit(ERROR)
+
+def do_conversion(image: Image, pixels_per_character: int,
+    bit_mapping: dict[str, int], pixel_step: int, width: int, height: int,
+    ) -> list[int]:
+    '''Converts source file, based on parameters, and returns it as a list
+    of bytes.'''
+    # For 8 bit-wide input we shift the output bit left by 1,
+    # for wide characters (4 bits of input) we shift left by 2,
+    # to get 8-bit per output byte.
+    bits_to_shift = 1 if pixels_per_character == 8 else 2
+
+    output_bytes = []
+    # For every row of characters in the source image ...
+    for row in range(height // BYTES_PER_CHARACTER):
+        # ... process each character from left to right ...
+        for character in range(width // pixels_per_character):
+            # ... doing all 8 vertical bytes at a time ...           
+            for byte in range(BYTES_PER_CHARACTER):
+                output_byte = 0
+                # ... add the output bits for each pixel in the character ...
+                for pixel in range(0, pixels_per_character, pixel_step):
+                    # Get X and Y coordinates for the pixel in the source image.
+                    x = (character * pixels_per_character) + pixel
+                    y = (row * BYTES_PER_CHARACTER) + byte
+                    # Get the pixel value, create output bit pattern lookup key.
+                    key = get_key_from_pixel_or_color(image.getpixel((x, y)))
+                    
+                    # Shift the output byte left and add the bit pattern.
+                    # Initial value is 0, so we can always shift on the first
+                    # pass, without needing "first iteration" logic.                 
+                    output_byte = output_byte << bits_to_shift                   
+                    output_byte += bit_mapping[key] 
+
+                # Add the output byte to the list of output bytes.
+                output_bytes.append(output_byte)
+
+    return output_bytes                     
+            
+def get_pixel_step(number_of_bit_maps: int, pixels_per_character: int) -> int:
+    '''Returns the number of pixels to step through for each character.'''
+    # For 2-color or wide-aspect characters in the SOURCE, we process every
+    # pixel, since there is either 8 of them, or they're assumed to be 2 bits
+    # wide.  For 4-color characters, in standard aspect ration, each source
+    # pixel is repeated twice, so we only process every other one.
+    if number_of_bit_maps == 2 or pixels_per_character == 4:
+        return EVERY_PIXEL
+    else:
+        return EVERY_OTHER_PIXEL
+
+def get_pixels_per_character(aspect_ratio: str) -> int:
+    '''Returns the number of pixels per character based on the aspect ratio.'''
+    # If the aspect ratio is not 2:1, then it means that a SINGLE pixel in the
+    # source file is actually 2 pixels wide for display, so we process half
+    # as many on the INPUT (they will be double-wide in the OUTPUT.)
+    return 4 if aspect_ratio == '2:1' else 8   
+
+def get_bit_mapping(image: Image, colors: str) -> dict[str, int]:
     '''Returns the color to bitmap mapping for the specified image, based on
     the colors or indexes specified. If no colors are specified, then default'''
     if colors == None:
@@ -56,7 +137,7 @@ def get_bit_mapping(image: Image, colors: str) -> dict[str, str]:
     else:
         return get_color_to_bit_mapping(colors)
 
-def get_default_color_to_bit_mapping(image: Image) -> dict[str, str]:
+def get_default_color_to_bit_mapping(image: Image) -> dict[str, int]:
     '''Returns the default color to bitmap mapping (no -color specified).'''
     mapping = {}
     colors = image.getcolors()    
@@ -69,7 +150,7 @@ def get_default_color_to_bit_mapping(image: Image) -> dict[str, str]:
        
     return mapping
 
-def get_color_to_bit_mapping(colors: str) -> dict[str, str]:
+def get_color_to_bit_mapping(colors: str) -> dict[str, int]:
     '''Returns a dictionary mapping color values or indexes to their output
     bitmaps.'''
     entries = colors.split(SEPARATOR)
