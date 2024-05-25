@@ -48,8 +48,6 @@ def convert(colors: str, aspect_ratio: str, image_file: str, fnt_file: str):
     image = Image.open(image_file)
     print(get_bit_mapping(image, colors))
 
-
-
 def get_bit_mapping(image: Image, colors: str) -> dict[str, str]:
     '''Returns the color to bitmap mapping for the specified image, based on
     the colors or indexes specified. If no colors are specified, then default'''
@@ -65,7 +63,8 @@ def get_default_color_to_bit_mapping(image: Image) -> dict[str, str]:
     # Default is simply to map the first 4 colors to the first 4 bit patterns.
     number_of_colors = min(MAX_COLORS, len(colors))
     for index in range(number_of_colors):
-        key = get_key_from_pixel(colors[index][COLOR_INDEX])
+        # Handes pixel value as either colors or palette indexes automatically.
+        key = get_key_from_pixel_or_color(colors[index][COLOR_INDEX])
         mapping[key] = BIT_PATTERNS[index]        
        
     return mapping
@@ -89,8 +88,8 @@ def get_color_to_bit_mapping(colors: str) -> dict[str, str]:
 
     return mapping  
 
-def get_key_from_pixel(pixel: tuple[int, int, int] | int) -> str:
-    '''Returns the key for the pixel's color value or index.'''
+def get_key_from_pixel_or_color(pixel: tuple[int, int, int] | int) -> str:
+    '''Returns the key for the pixel, it's color value or index.'''
     if type(pixel) is tuple:
         # Pixel is an RGB tuple.   
         return RGB_from_pixel(pixel)
