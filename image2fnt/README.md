@@ -6,7 +6,8 @@ This is a command-line tool for converting losslessly-encoded bitmap files (e.g.
     
       Converts bitmapped images to Atari 8-bit .FNT files.
     
-    Options:   --version  Show the version and exit.   --help     Show this message and exit.
+    Options:   --version  Show the version and exit.
+               --help     Show this message and exit.
         
     Commands:   convert  Converts bitmapped images to Atari 8-bit .FNT files.
                 info     Displays image metrics, color/palette data, and character layout.
