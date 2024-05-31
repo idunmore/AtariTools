@@ -55,7 +55,7 @@ def convert(colors: str, aspect_ratio: str, image_file: str, fnt_file: str):
         # Setup all the parameters for the conversion.
         pixels_per_character = get_pixels_per_character(aspect_ratio)
         bit_mapping = get_bit_mapping(image, colors)   
-        pixel_step = get_pixel_step(len(bit_mapping), pixels_per_character)     
+        pixel_step = get_pixel_step(len(bit_mapping), pixels_per_character)
         width, height = image.size
 
         # Do the conversion ...
@@ -79,10 +79,15 @@ def do_conversion(image: Image, pixels_per_character: int,
     ) -> list[int]:
     '''Converts source file, based on parameters, and returns it as a list
     of bytes.'''
-    # For 8 bit-wide input we shift the output bit left by 1,
-    # for wide characters (4 bits of input) we shift left by 2,
-    # to get 8-bit per output byte.
-    bits_to_shift = 1 if pixels_per_character == 8 else 2
+    
+    # For 8-bit, 2 color (the number of bit maps = the number of colors) images
+    # we shift 1 bit per pixel ...
+    if pixels_per_character == 8 and len(bit_mapping) == 2:
+        bits_to_shift = 1
+    else:
+        # ... otherwise we're dealing with 2:1 aspect ratios or 4-color images
+        # which require 2-bits per pixel.
+        bits_to_shift = 2
 
     output_bytes = []
     # For every row of characters in the source image ...
