@@ -13,6 +13,7 @@ import click
 import split
 import cartridge
 import config
+import atr
 
 # Constants
 
@@ -33,12 +34,17 @@ VERBOSE = 2
 def aemt():
     '''[A]tari [E]ight-bit [M]ulti-[T]ool
 
+            \b
+                Manipulates Atari 8-bit .ATR disk images.                        
+            
+            \b
                 Moves files to organized folder structures, with an optionally
                 limited number of files per folder.
             
-            \b
+            \b           
                 Creates, applies and updates .cfg files for Atari THE400 Mini
                 games on USB media.
+            
             \b
                 Identifies and verifies Atari 8-bit cartridge images.'''
     pass
@@ -54,4 +60,5 @@ if __name__ == '__main__':
     aemt.add_command(split.split)
     aemt.add_command(cartridge.cart)
     aemt.add_command(config.config)
+    aemt.add_command(atr.atr)
     aemt()
