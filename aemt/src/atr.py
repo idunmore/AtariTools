@@ -51,7 +51,8 @@ def protect(recurse: bool, verbose: bool, source_path: str):
     SOURCE_PATH may be a directory or a file; if a directory *only* .atr files
     will be processed.  The -r/--recurse option will include subdirectories.
     '''
-    process_atr_files(source_path, recurse, verbose, protect=True)
+    ret_val = process_atr_files(source_path, recurse, verbose, protect=True)
+    exit(ret_val)
 
 @atr.command('unprotect')
 @click.option('-r', '--recurse', is_flag=True, default=False,
@@ -67,7 +68,8 @@ def unprotect(recurse: bool, verbose: bool, source_path: str):
     SOURCE_PATH may be a directory or a file; if a directory *only* .atr files
     will be processed.  The -r/--recurse option will include subdirectories.
     '''
-    process_atr_files(source_path, recurse, verbose, protect=False)
+    ret_val = process_atr_files(source_path, recurse, verbose, protect=False)
+    exit(ret_val)
 
 @atr.command('status')
 @click.option('-r', '--recurse', is_flag=True, default=False,
@@ -84,12 +86,13 @@ def status(recurse: bool, source_path: str):
 
     if not files:
         click.echo(ERROR_TEXT + 'No .atr files found to process.')
-        return ERROR
+        exit(ERROR)
     
     for file in files:
         is_protected = get_file_protection_status(file)
         status_text = PROTECT_SUCCESS if is_protected else UNPROTECT_SUCCESS
         click.echo(f'{file}: {status_text}')
+        exit(SUCCESS)
 
 def build_source_file_list(source_path: str, recurse: bool) -> list:
     # We can work on a single file, or a directory (with optional recursion),
