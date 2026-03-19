@@ -32,7 +32,7 @@ PROTECT_BIT_MASK = 0x01
 UNPROTECT_BIT_MASK = 0xFE
 
 @click.group()
-@click.version_option('0.0.1.0')
+@click.version_option('0.0.1.1')
 def atr():
     '''Manipulates Atari 8-bit .ATR disk images.'''
     pass
@@ -69,6 +69,28 @@ def unprotect(recurse: bool, verbose: bool, source_path: str):
     '''
     process_atr_files(source_path, recurse, verbose, protect=False)
 
+@atr.command('status')
+@click.option('-r', '--recurse', is_flag=True, default=False,
+    help='Process directories recursively for .atr files')
+@click.argument('source_path', 
+    type=click.Path(exists=True, file_okay=True, dir_okay=True))
+def status(recurse: bool, source_path: str):
+    '''Display the write-protection status of .ATR disk images.
+    
+    SOURCE_PATH may be a directory or a file; if a directory *only* .atr files
+    will be processed.  The -r/--recurse option will include subdirectories.
+    '''
+    files = build_source_file_list(source_path, recurse)
+
+    if not files:
+        click.echo(ERROR_TEXT + 'No .atr files found to process.')
+        return ERROR
+    
+    for file in files:
+        is_protected = get_file_protection_status(file)
+        status_text = PROTECT_SUCCESS if is_protected else UNPROTECT_SUCCESS
+        click.echo(f'{file}: {status_text}')
+
 def build_source_file_list(source_path: str, recurse: bool) -> list:
     # We can work on a single file, or a directory (with optional recursion),
     # so build a list of file(s) accordingly
@@ -100,6 +122,15 @@ def process_atr_files(
             click.echo(f'{file}: {action}')
 
     return SUCCESS
+
+def get_file_protection_status(file: pathlib.Path) -> bool:
+    with open(file, 'rb') as atr_file:
+        # Read the status byte from the header
+        atr_file.seek(STATUS_BYTE_INDEX)
+        status_byte = atr_file.read(1)[0]
+        atr_file.close()             
+
+    return (status_byte & PROTECT_BIT_MASK) != 0
 
 def set_file_protection(file: pathlib.Path, protect: bool) -> int:
     with open(file, 'rb+' ) as atr_file:
