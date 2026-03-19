@@ -7,7 +7,6 @@
 # License: https://github.com/idunmore/AtariTools/blob/master/LICENSE
 
 # Native Python Modules
-
 import pathlib
 
 # 3rd Party/External Modules
