@@ -4,19 +4,32 @@ A collection of tools for Atari computers, consoles and emulators.
 ## Atari 8-bit Tools
 Tools for the various Atari 8-bit machines, including the 400, 800, 800XL, 130XE computers, the 5200 console, as well various emulators such as [Atari800](https://atari800.github.io)/[Atari800MacX](https://www.atarimac.com/atari800macx.php), [Altirra](https://www.virtualdub.org/altirra.html), and plug-and-play units such as [THE400 Mini](https://atari.com/products/atari-400-mini-1):
 
-### [AEMT](https://github.com/idunmore/AtariTools/tree/main/aemt) - Atari Eight-bit Multi-Tool
+### [AEMT](https://github.com/idunmore/aemt) - Atari Eight-bit Multi-Tool
 
-[\[A\]tari \[E\]ight-bit \[M\]ulti-\[T\]ool](https://github.com/idunmore/AtariTools/tree/main/aemt)
+[\[A\]tari \[E\]ight-bit \[M\]ulti-\[T\]ool](https://github.com/idunmore/aemt)
 
 This is a command-line tool, intended to provide some "quality of life" improvements to managing large game/program libraries, on USB Media, for the "Atari THE400 Mini" (with utilities for other Atari 8-bit emulators).
 
 Current functionality includes:
 
--   Moving files, in bulk, to organized folder structures.
-    
--   Creating, applying, and updating .cfg files automatically.
-    
--   Identify and validate CARTRIDGE files.
+- Manipulates Atari 8-bit .ATR disk images.
+
+- Moving files, in bulk, to organized folder structures - with the ability
+  to control how the organization is done and to limit the number of files
+  per folder (to avoid exceeding "THE400 Minis" 255 files-per-folder limit).
+
+- Creating, applying, and updating .cfg files automatically, WITHOUT having
+  to set them individually, one game at a time, from within "THE400 Mini's"
+  file browser.
+
+- Identify and validate CARTRIDGE files (".car" and ".c01" to ".c70"),
+  including decoding the header, showing the stored ROM data checksum and
+  computing the actual checksum of the contained ROM data.
+
+  Only the ".cfg" file functionality is specific to "THE400 Mini"; the other
+  functions can be used with any Atari 8-bit emulators/systems.
+
+**NOTE:** I moved `aemt` to its [own repository](https://github.com/idunmore/aemt) as part of making it available as a directly-installable (via `pip`/`pipx`) program.
 
 
 ### [Fnt2Data](https://github.com/idunmore/AtariTools/tree/main/fnt2data) - Font to Data Converter
